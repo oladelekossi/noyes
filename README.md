@@ -2,6 +2,8 @@
 
 Fine-tune your X feed from the keyboard.
 
+For agents working on this repository, read [AGENTS.md](AGENTS.md).
+
 wheel adds a quiet ⊖ button beside the menu on posts in your **For You** feed. Click it to select X’s native **Not interested in this post** action. X handles the dismissal, confirmation, any follow-up questions, and Undo.
 
 No settings, accounts, API keys, or build step. No automatic feed browsing.
