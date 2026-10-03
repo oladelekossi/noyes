@@ -18,15 +18,17 @@ The supported user behavior and key mapping live in [README.md](../README.md#key
 
 The runtime enables feed controls only on `/home` with the visible English `For you` tab selected inside `primaryColumn`. It identifies posts by `article[data-testid="tweet"]` and reads the numeric status ID from the link wrapping the post's timestamp. Missing IDs or missing expected controls prevent the relevant action.
 
-Selection stores both a DOM element and its status ID. Buttons carry the same ID in `data-post-key`. X can recycle DOM nodes, so the ID must still match before feedback is dispatched. Nested article posts and recognized promoted-post markers are excluded.
+Selection stores both a DOM element and its status ID. X can recycle DOM nodes, so the ID must still match before feedback is dispatched. Nested article posts and recognized promoted-post markers are excluded.
 
-Navigation uses DOM order without wrapping. The first navigation selects the first post intersecting the usable viewport. Once selected, navigation scrolls the chosen post into view. If manual scrolling leaves the old selection offscreen, the next action starts with a visible post. `.wheel-selected` supplies the orange marker.
+Navigation uses DOM order without wrapping. The first navigation selects the first post intersecting the usable viewport. Navigation aligns the top of the chosen post below the feed header. For 800 ms after navigation it corrects layout shifts; wheel, touch, pointer, or keyboard input cancels that adjustment. If manual scrolling leaves the old selection offscreen, the next action starts with a visible post. `.wheel-selected` supplies a green outline inset around the entire post.
+
+Selection retains the tweet ID when React temporarily replaces an article. A replacement with the same ID regains the green marker; an element recycled for a different ID never inherits it. Class rewrites also restore the marker.
 
 A MutationObserver batches refreshes through animation frames. A one-second refresh also catches URL changes that reuse the DOM. There is no autonomous scrolling or background feed curation.
 
 ## Dispatching feedback
 
-A like targets only the native `data-testid="like"` control. It never invokes the unlike control. A short in-memory set prevents duplicate like requests while the native state updates.
+A like targets only the native `data-testid="like"` control. It never invokes the unlike control. A short in-memory set prevents duplicate like requests while the native state updates. Selection advances immediately to the next loaded post, even if the current post is already liked; it stays put at the end.
 
 Not interested is serialized through `busy` and an AbortController:
 
@@ -38,15 +40,15 @@ Not interested is serialized through `busy` and an AbortController:
 
 Each menu lookup has a 1,600 ms deadline and polls every 40 ms. There is no automatic action retry. Cancellation stops a pending lookup; missing feedback leaves the post unchanged and shows a notice. Native menus are left for the user to inspect or close on failure.
 
-After a successful keyboard dismissal, selection prefers the captured next neighbor, then the previous neighbor when no next neighbor remains; it clears if neither is usable. Mouse-button dismissal does not explicitly advance selection. Success here means the native control was clicked, not that X's server accepted feedback or changed future recommendations.
+After a successful keyboard dismissal, selection prefers the captured next neighbor, then the previous neighbor when no next neighbor remains; it clears if neither is usable. A WeakMap records dismissed element/ID pairs so a still-mounted dismissed post is skipped without injecting a button. Success here means the native control was clicked, not that X's server accepted feedback or changed future recommendations.
 
 The shortcut handler ignores typing targets, composition events, modifier keys, repeated keydown events, and ordinary menus/dialogs. During wheel's own pending feedback, navigation can cancel the wait; additional like/dismiss keys are consumed without another action. Consumed keys' keypress/keyup events are also intercepted to avoid native X shortcut conflicts.
 
 ## Data and artifacts
 
-The runtime's input is the displayed DOM plus the user's click or keystroke. Post IDs connect selection, injected buttons, and pending feedback; DOM position alone is not an identity. The live DOM wins over cached state when a post changes.
+The runtime's input is the displayed DOM plus the user's keystroke. Post IDs connect selection and pending feedback; DOM position alone is not an identity. The live DOM wins over cached state when a post changes.
 
-Runtime output is an injected control, selection marker, transient notice, or native UI action. State is in memory for the page lifetime. The extension has no storage, analytics, credentials, backend, or direct network client. X owns any requests resulting from its native controls.
+Runtime output is a selection marker, transient notice, or native UI action. State is in memory for the page lifetime. The extension has no storage, analytics, credentials, backend, or direct network client. X owns any requests resulting from its native controls.
 
 The package script reads the release version from `extension/manifest.json` and writes `dist/wheel-<version>.zip`. A rerun replaces that version's ZIP; ZIPs for other versions remain. It includes all top-level files in `extension/`, not an explicit file allowlist. Keeping unrelated files out of that directory is a contributor convention, not a packaging safeguard.
 
@@ -60,4 +62,4 @@ The vet adapter supplies JavaScript text directly to the upstream analyzer becau
 
 Browser tests run against a simulated X page. The extension smoke test loads the manifest and content script in an isolated Chromium profile, but still serves the simulated page. Passing either does not prove the current signed-in X DOM, recommendation effects, or every localization works.
 
-Live compatibility is unverified. Expansion beyond the English desktop web experience—including native mobile support, other locales, settings, backend services, and AI filtering—is **undecided**. None of these features exists today; this document does not request their implementation.
+Installation, selection, the green outline, and removal of injected buttons were verified live. Live like/feedback dispatch and automatic advancement remain unverified. Expansion beyond the English desktop web experience—including native mobile support, other locales, settings, backend services, and AI filtering—is **undecided**. None of these features exists today; this document does not request their implementation.

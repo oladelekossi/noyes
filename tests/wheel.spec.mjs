@@ -11,14 +11,16 @@ async function start(page) {
   await page.goto("https://x.com/home");
   await page.addStyleTag({ path: css });
   await page.addScriptTag({ path: script });
-  await expect(page.locator(".wheel-button")).toHaveCount(3);
+  await expect(page.locator(".wheel-button")).toHaveCount(0);
 }
 test.beforeEach(async ({ page }) => start(page));
 
-test("one click sends native feedback for exactly the chosen post and keeps Undo", async ({
+test("n sends native feedback for exactly the chosen post and keeps Undo", async ({
   page,
 }) => {
-  await page.locator(".wheel-button").nth(1).click();
+  await page.keyboard.press("k");
+  await page.keyboard.press("k");
+  await page.keyboard.press("n");
   await expect
     .poll(() => page.evaluate(() => window.feedback))
     .toEqual(["102"]);
@@ -26,39 +28,37 @@ test("one click sends native feedback for exactly the chosen post and keeps Undo
   await expect(page.locator(".native-feedback")).toBeVisible();
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.feedback)).toEqual([]);
-  await expect(page.locator(".wheel-button")).toHaveCount(3);
+  await expect(page.locator(".wheel-button")).toHaveCount(0);
 });
 
-test("following, profile, and post detail pages have no wheel buttons", async ({
+test("selection clears outside For You and shortcuts leave other pages alone", async ({
   page,
 }) => {
+  await page.keyboard.press("k");
   await page.getByRole("tab", { name: "Following", exact: true }).click();
-  await expect(page.locator(".wheel-button")).toHaveCount(0);
+  await expect(page.locator(".wheel-selected")).toHaveCount(0);
+  await page.keyboard.press("l");
   await page.getByRole("tab", { name: "For you", exact: true }).click();
-  await expect(page.locator(".wheel-button")).toHaveCount(3);
-  await page.evaluate(() => history.pushState({}, "", "/alex"));
-  await expect(page.locator(".wheel-button")).toHaveCount(0);
-  await page.evaluate(() => history.pushState({}, "", "/home"));
-  await expect(page.locator(".wheel-button")).toHaveCount(3);
-  await page.evaluate(() => history.pushState({}, "", "/alex/status/101"));
-  await expect(page.locator(".wheel-button")).toHaveCount(0);
+  for (const path of ["/alex", "/alex/status/101"]) {
+    await page.evaluate(() => history.pushState({}, "", "/home"));
+    await page.keyboard.press("k");
+    await page.evaluate((path) => history.pushState({}, "", path), path);
+    await expect(page.locator(".wheel-selected")).toHaveCount(0);
+    await page.keyboard.press("l");
+  }
+  expect(await page.evaluate(() => window.likes)).toEqual([]);
 });
 
-test("handles infinite scrolling, recycled posts, and repeat injection without duplicates", async ({
+test("repeat injection does not duplicate shortcut handlers", async ({
   page,
 }) => {
-  await page.evaluate(() => window.addPost({ id: "104" }));
-  await expect(page.locator(".wheel-button")).toHaveCount(4);
   await page.addScriptTag({ path: script });
-  await page.evaluate(
-    () =>
-      (document.querySelector("time").closest("a").href = "/alex/status/999"),
+  await page.keyboard.press("l");
+  expect(await page.evaluate(() => window.likes)).toEqual(["101"]);
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/jordan/status/102",
   );
-  await expect(page.locator(".wheel-button").first()).toHaveAttribute(
-    "data-post-key",
-    "999",
-  );
-  await expect(page.locator(".wheel-button")).toHaveCount(4);
 });
 
 test("missing action never triggers mute, block, report, or local dismissal", async ({
@@ -73,12 +73,15 @@ test("missing action never triggers mute, block, report, or local dismissal", as
         "Not interested in this ad",
       ]),
   );
-  await page.locator(".wheel-button").first().click();
+  await page.keyboard.press("n");
   await expect(page.getByRole("status")).toContainText("Nothing was changed");
   expect(await page.evaluate(() => window.otherActions)).toEqual([]);
   expect(await page.evaluate(() => window.feedback)).toEqual([]);
   await expect(page.locator("article")).toHaveCount(3);
-  await expect(page.locator(".wheel-button").first()).toBeEnabled();
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/alex/status/101",
+  );
 });
 
 test("handles delayed menus and delayed feedback labels", async ({ page }) => {
@@ -86,7 +89,7 @@ test("handles delayed menus and delayed feedback labels", async ({ page }) => {
     window.menuDelay = 220;
     window.itemDelay = 220;
   });
-  await page.locator(".wheel-button").first().click();
+  await page.keyboard.press("n");
   await expect
     .poll(() => page.evaluate(() => window.feedback))
     .toEqual(["101"]);
@@ -95,14 +98,14 @@ test("handles delayed menus and delayed feedback labels", async ({ page }) => {
 test("does not touch an already open native menu", async ({ page }) => {
   await page.locator("[data-testid=caret]").nth(1).click();
   await expect(page.getByRole("menu")).toBeVisible();
-  await page.locator(".wheel-button").last().click();
-  await expect(page.getByRole("status")).toContainText("Close the open menu");
+  await page.keyboard.press("n");
+  await expect(page.getByRole("menu")).toBeVisible();
   expect(await page.evaluate(() => window.feedback)).toEqual([]);
 });
 
 test("navigation cancels pending feedback", async ({ page }) => {
   await page.evaluate(() => (window.menuDelay = 300));
-  await page.locator(".wheel-button").first().click();
+  await page.keyboard.press("n");
   await page.getByRole("tab", { name: "Following", exact: true }).click();
   await expect(page.getByRole("menu")).toBeVisible();
   // Wait past the action deadline to ensure no delayed feedback is dispatched.
@@ -112,7 +115,7 @@ test("navigation cancels pending feedback", async ({ page }) => {
 
 test("Escape cancels pending feedback", async ({ page }) => {
   await page.evaluate(() => (window.menuDelay = 250));
-  await page.locator(".wheel-button").first().click();
+  await page.keyboard.press("n");
   await page.keyboard.press("Escape");
   await page.waitForTimeout(1800);
   expect(await page.evaluate(() => window.feedback)).toEqual([]);
@@ -122,7 +125,7 @@ test("post recycling during the menu wait cancels feedback", async ({
   page,
 }) => {
   await page.evaluate(() => (window.menuDelay = 250));
-  await page.locator(".wheel-button").first().click();
+  await page.keyboard.press("n");
   await page.evaluate(
     () =>
       (document.querySelector("time").closest("a").href = "/alex/status/999"),
@@ -137,16 +140,13 @@ test("keyboard activation and the legacy Tweet label work", async ({
   await page.evaluate(
     () => (window.options = ["Not interested in this Tweet", "Block @example"]),
   );
-  await page.locator(".wheel-button").first().focus();
-  await page.keyboard.press("Enter");
+  await page.keyboard.press("n");
   await expect
     .poll(() => page.evaluate(() => window.feedback))
     .toEqual(["101"]);
 });
 
-test("does not add controls to ads or nested quoted posts", async ({
-  page,
-}) => {
+test("navigation skips ads and nested quoted posts", async ({ page }) => {
   await page.evaluate(() => {
     const ad = window.addPost({ id: "105" });
     const marker = document.createElement("div");
@@ -155,45 +155,61 @@ test("does not add controls to ads or nested quoted posts", async ({
     const quote = window.addPost({ id: "106" });
     document.querySelector("article").append(quote);
   });
-  await expect(page.locator(".wheel-button")).toHaveCount(3);
+  for (let i = 0; i < 5; i++) await page.keyboard.press("k");
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/sam/status/103",
+  );
+  await expect(page.locator(".wheel-button")).toHaveCount(0);
 });
 
-test("button is compact in light and dark layouts", async ({ page }) => {
+test("green outline surrounds the whole post in light and dark layouts without extra controls", async ({
+  page,
+}) => {
   const testInfo = test.info();
-  const button = page.locator(".wheel-button").first();
-  await expect(button).toHaveAccessibleName("Not interested");
-  const box = await button.boundingBox();
-  expect(box.width).toBe(32);
-  expect(box.height).toBe(32);
-  await page.screenshot({ path: testInfo.outputPath("wheel-light.png") });
-  await page.evaluate(() => document.body.classList.add("dark"));
-  await button.hover();
-  await page.screenshot({ path: testInfo.outputPath("wheel-dark.png") });
+  await page.keyboard.press("k");
+  const selected = page.locator("article.wheel-selected");
+  await expect(page.locator(".wheel-button")).toHaveCount(0);
+  for (const theme of ["light", "dark"]) {
+    if (theme === "dark")
+      await page.evaluate(() => document.body.classList.add("dark"));
+    await expect(selected).toHaveCSS("outline", "rgb(34, 197, 94) solid 2px");
+    await expect(selected).toHaveCSS("outline-offset", "-2px");
+    await page.screenshot({ path: testInfo.outputPath(`wheel-${theme}.png`) });
+  }
 });
 
 test("k selects the first visible post then advances; j moves back without wrapping", async ({
   page,
 }) => {
-  const selected = page.locator(".wheel-selected .wheel-button");
+  const selected = page.locator(".wheel-selected a:has(time)");
   await page.keyboard.press("k");
-  await expect(selected).toHaveAttribute("data-post-key", "101");
+  await expect(selected).toHaveAttribute("href", "/alex/status/101");
   await page.keyboard.press("k");
-  await expect(selected).toHaveAttribute("data-post-key", "102");
+  await expect(selected).toHaveAttribute("href", "/jordan/status/102");
   await page.keyboard.press("j");
-  await expect(selected).toHaveAttribute("data-post-key", "101");
+  await expect(selected).toHaveAttribute("href", "/alex/status/101");
   await page.keyboard.press("j");
-  await expect(selected).toHaveAttribute("data-post-key", "101");
+  await expect(selected).toHaveAttribute("href", "/alex/status/101");
 });
 
-test("l likes the selected post and never toggles it off", async ({ page }) => {
+test("l likes and advances immediately, including past an already-liked post", async ({
+  page,
+}) => {
   await page.keyboard.press("k");
   await page.keyboard.press("k");
   await page.keyboard.press("l");
   await expect.poll(() => page.evaluate(() => window.likes)).toEqual(["102"]);
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/sam/status/103",
+  );
+  await page.keyboard.press("j");
   await page.keyboard.press("l");
-  await expect(
-    page.locator(".wheel-selected [data-testid=unlike]"),
-  ).toHaveCount(1);
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/sam/status/103",
+  );
   expect(await page.evaluate(() => window.likes)).toEqual(["102"]);
 });
 
@@ -206,15 +222,15 @@ test("n sends feedback on the selected post and advances selection", async ({
   await expect
     .poll(() => page.evaluate(() => window.feedback))
     .toEqual(["102"]);
-  await expect(page.locator(".wheel-selected .wheel-button")).toHaveAttribute(
-    "data-post-key",
-    "103",
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/sam/status/103",
   );
   await page.keyboard.press("l");
   await expect.poll(() => page.evaluate(() => window.likes)).toEqual(["103"]);
 });
 
-test("l and n can start from the first visible post without a navigation key", async ({
+test("l then n advances through successive posts without navigation keys", async ({
   page,
 }) => {
   await page.keyboard.press("l");
@@ -222,7 +238,32 @@ test("l and n can start from the first visible post without a navigation key", a
   await page.keyboard.press("n");
   await expect
     .poll(() => page.evaluate(() => window.feedback))
-    .toEqual(["101"]);
+    .toEqual(["102"]);
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/sam/status/103",
+  );
+});
+
+test("holding l likes and advances only once; the last post never wraps", async ({
+  page,
+}) => {
+  await page.keyboard.down("l");
+  await page.keyboard.down("l");
+  await page.keyboard.up("l");
+  expect(await page.evaluate(() => window.likes)).toEqual(["101"]);
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/jordan/status/102",
+  );
+  await page.keyboard.press("k");
+  await page.keyboard.press("l");
+  await page.keyboard.press("l");
+  expect(await page.evaluate(() => window.likes)).toEqual(["101", "103"]);
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/sam/status/103",
+  );
 });
 
 test("typing, composition, and modifier shortcuts do not trigger wheel", async ({
@@ -290,9 +331,9 @@ test("keyboard selection follows new posts and resets after recycling", async ({
   for (let i = 0; i < 3; i++) await page.keyboard.press("k");
   await page.evaluate(() => window.addPost({ id: "104" }));
   await page.keyboard.press("k");
-  await expect(page.locator(".wheel-selected .wheel-button")).toHaveAttribute(
-    "data-post-key",
-    "104",
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/alex/status/104",
   );
   await page.evaluate(
     () =>
@@ -311,7 +352,10 @@ test("scrolling past a selection makes l target the visible post", async ({
       .forEach((post) => (post.style.minHeight = "700px"));
   });
   await page.keyboard.press("k");
-  await page.locator("article").nth(2).scrollIntoViewIfNeeded();
+  await page.mouse.wheel(0, 1400);
+  await expect
+    .poll(async () => (await page.locator("article").nth(2).boundingBox()).y)
+    .toBeLessThan(300);
   await page.keyboard.press("l");
   await expect.poll(() => page.evaluate(() => window.likes)).toEqual(["103"]);
 });
@@ -321,8 +365,129 @@ test("selected post has a visible marker", async ({ page }) => {
   await page.keyboard.press("k");
   await page.keyboard.press("k");
   await expect(page.locator(".wheel-selected")).toHaveCSS(
-    "box-shadow",
-    "rgb(249, 115, 22) 3px 0px 0px 0px inset",
+    "outline",
+    "rgb(34, 197, 94) solid 2px",
   );
   await page.screenshot({ path: testInfo.outputPath("wheel-keyboard.png") });
+});
+
+test("wheel suppresses the feed focus ring but preserves focus and normal control outlines", async ({
+  page,
+}) => {
+  const feed = page.locator("[data-testid=primaryColumn]");
+  await page.addStyleTag({
+    content: ":focus-visible { outline: 3px solid blue; }",
+  });
+  await feed.evaluate((element) => element.setAttribute("tabindex", "0"));
+  await feed.focus();
+  await expect(feed).toHaveCSS("outline-color", "rgb(0, 0, 255)");
+  await page.keyboard.press("k");
+  await expect(feed).toBeFocused();
+  await expect(feed).toHaveCSS("outline-style", "none");
+  await expect(page.locator("article.wheel-selected")).toHaveCSS(
+    "outline",
+    "rgb(34, 197, 94) solid 2px",
+  );
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("tab", { name: "For you", exact: true }),
+  ).toBeFocused();
+  await expect(
+    page.getByRole("tab", { name: "For you", exact: true }),
+  ).toHaveCSS("outline-color", "rgb(0, 0, 255)");
+  await page.getByRole("tab", { name: "Following", exact: true }).click();
+  await expect(page.locator(".wheel-selected")).toHaveCount(0);
+  await feed.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(feed).toHaveCSS("outline-style", "solid");
+});
+
+test("selection survives class rewrites and replacement of the same tweet", async ({
+  page,
+}) => {
+  await page.keyboard.press("k");
+  await page.keyboard.press("k");
+  await page.evaluate(
+    () =>
+      (document.querySelector(".wheel-selected").className = "x-rendered-post"),
+  );
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/jordan/status/102",
+  );
+  await page.evaluate(() => {
+    const post = document.querySelector(".wheel-selected");
+    const replacement = post.cloneNode(true);
+    replacement.className = "x-rendered-post";
+    post.remove();
+    setTimeout(
+      () => document.querySelectorAll("article")[0].after(replacement),
+      80,
+    );
+  });
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/jordan/status/102",
+  );
+  await page.keyboard.press("k");
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/sam/status/103",
+  );
+});
+
+test("liking advances by tweet ID even if X replaces the next article", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    document
+      .querySelector('[data-testid="like"]')
+      .addEventListener("click", () => {
+        const next = document.querySelectorAll("article")[1];
+        const replacement = next.cloneNode(true);
+        next.replaceWith(replacement);
+      });
+  });
+  await page.keyboard.press("l");
+  await expect.poll(() => page.evaluate(() => window.likes)).toEqual(["101"]);
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/jordan/status/102",
+  );
+});
+
+test("navigation shows short and tall posts from the top and settles layout shifts", async ({
+  page,
+}) => {
+  await page.addStyleTag({
+    content:
+      "body { padding-bottom: 1200px; } main { overflow: visible; } .tabs { position: sticky; top: 0; height: 88px; background: white; z-index: 1; } article { min-height: 300px; } article:nth-child(2) { min-height: 1100px; }",
+  });
+  await page.keyboard.press("k");
+  await page.keyboard.press("k");
+  const selected = page.locator(".wheel-selected");
+  await expect
+    .poll(async () => Math.round((await selected.boundingBox()).y))
+    .toBe(100);
+  await page.evaluate(
+    () => (document.querySelector("article").style.minHeight = "700px"),
+  );
+  await expect
+    .poll(async () => Math.round((await selected.boundingBox()).y))
+    .toBe(100);
+  await page.keyboard.press("k");
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/sam/status/103",
+  );
+  await expect
+    .poll(async () => Math.round((await selected.boundingBox()).y))
+    .toBe(100);
+  await page.mouse.wheel(0, 250);
+  await expect
+    .poll(async () => Math.round((await selected.boundingBox()).y))
+    .toBeLessThan(0);
+  await page.waitForTimeout(850);
+  expect(Math.round((await selected.boundingBox()).y)).toBeLessThan(0);
+  await expect(selected).toHaveCSS("outline-color", "rgb(34, 197, 94)");
 });

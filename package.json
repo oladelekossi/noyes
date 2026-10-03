@@ -2,7 +2,7 @@
   "name": "wheel",
   "version": "0.2.0",
   "private": true,
-  "description": "Fine-tune your X feed, one click at a time.",
+  "description": "Fine-tune your X feed, one keystroke at a time.",
   "scripts": {
     "test": "playwright test",
     "check": "npm run vet",

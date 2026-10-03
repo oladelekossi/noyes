@@ -4,17 +4,14 @@
   globalThis.__wheelLoaded = true;
 
   const POST = 'article[data-testid="tweet"]';
-  const BUTTON = ".wheel-button";
   const MENU = '[role="menu"]';
-  const LABEL = "Not interested";
-  const ICON =
-    '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.7"/><path d="M8.5 12h7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
-  const CHECK =
-    '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 12 4 4 8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const dismissedPosts = new WeakMap();
   let busy = false;
   let scheduled = false;
   let noticeTimer;
   let selection = null;
+  let alignmentFrame;
+  let alignUntil = 0;
   let pendingFeedback = null;
   const handledKeys = new Set();
   const pendingLikes = new Set();
@@ -55,7 +52,7 @@
             !post.parentElement.closest(POST) &&
             visible(post) &&
             postKey(post) &&
-            own({ post: post, selector: BUTTON })?.dataset.state !== "done" &&
+            dismissedPosts.get(post) !== postKey(post) &&
             !post.querySelector(
               '[data-testid="placementTracking"], [data-testid="promotedIndicator"]',
             ),
@@ -68,39 +65,60 @@
     return rect.bottom > 100 && rect.top < innerHeight - 32;
   }
 
+  function stopAlignment() {
+    alignUntil = 0;
+    cancelAnimationFrame(alignmentFrame);
+  }
+
+  function paintSelection(post) {
+    document.querySelectorAll(".wheel-selected").forEach((element) => {
+      if (element !== post) element.classList.remove("wheel-selected");
+    });
+    if (post && !post.classList.contains("wheel-selected"))
+      post.classList.add("wheel-selected");
+  }
+
   function clearSelection() {
-    document
-      .querySelectorAll(".wheel-selected")
-      .forEach((post) => post.classList.remove("wheel-selected"));
+    stopAlignment();
+    paintSelection(null);
     selection = null;
   }
 
-  function selectPost({ post, scroll = true }) {
+  function alignSelection() {
+    if (!selection || !onForYou() || performance.now() >= alignUntil) return;
+    const post = selection.post;
+    if (
+      post?.isConnected &&
+      postKey(post) === selection.key &&
+      !overlayOpen()
+    ) {
+      const margin = parseFloat(getComputedStyle(post).scrollMarginTop);
+      if (Math.abs(post.getBoundingClientRect().top - margin) > 1)
+        post.scrollIntoView({ block: "start", behavior: "instant" });
+    }
+    // X and lazy media can shift layout just after navigation. Keep the header
+    // visible briefly, but immediately yield to any deliberate user scrolling.
+    alignmentFrame = requestAnimationFrame(alignSelection);
+  }
+
+  function selectPost({ post, key = post && postKey(post), scroll = true }) {
     clearSelection();
-    if (!post?.isConnected || !postKey(post)) return;
-    selection = { post, key: postKey(post) };
-    post.classList.add("wheel-selected");
-    if (scroll)
-      post.scrollIntoView({
-        block:
-          post.getBoundingClientRect().height > innerHeight - 160
-            ? "start"
-            : "center",
-        behavior: "instant",
-      });
+    if (!key) return;
+    post = feedPosts().find((candidate) => postKey(candidate) === key);
+    selection = { post, key };
+    paintSelection(post);
+    if (scroll) {
+      alignUntil = performance.now() + 800;
+      alignSelection();
+    }
   }
 
   function currentPost(posts) {
-    if (
-      selection &&
-      posts.includes(selection.post) &&
-      postKey(selection.post) === selection.key &&
-      inViewport(selection.post)
-    ) {
-      return selection.post;
-    }
-    // After mouse scrolling or virtualization, act on the first visible post,
-    // never a stale offscreen selection.
+    const selected =
+      selection && posts.find((post) => postKey(post) === selection.key);
+    if (selected && inViewport(selected)) return selected;
+    // After manual scrolling or virtualization, act on the first visible post,
+    // never a stale offscreen selection or a recycled node with another ID.
     return posts.find(inViewport);
   }
 
@@ -172,8 +190,7 @@
     const current = currentPost(posts);
     if (!current) return;
     if (key === "j" || key === "k") {
-      const anchored =
-        selection?.post === current && selection.key === postKey(current);
+      const anchored = selection?.key === postKey(current);
       const index = posts.indexOf(current);
       const nextIndex = anchored
         ? Math.max(
@@ -186,33 +203,38 @@
     }
     selectPost({ post: current, scroll: false });
     if (key === "l") {
+      const next = posts[posts.indexOf(current) + 1];
+      const nextKey = next && postKey(next);
       likePost(current);
+      if (nextKey) selectPost({ key: nextKey });
       return;
     }
-    const button = own({ post: current, selector: BUTTON });
-    if (!button) return;
     const keyBefore = postKey(current);
     const index = posts.indexOf(current);
     const neighbors = [posts[index + 1], posts[index - 1]]
       .filter(Boolean)
       .map((post) => ({ post, key: postKey(post) }));
-    void dismiss({ post: current, button }).then((succeeded) => {
+    void dismiss(current).then((succeeded) => {
       if (
         !succeeded ||
         !onForYou() ||
         (selection && selection.key !== keyBefore)
       )
         return;
-      const next = neighbors.find(
-        ({ post, key }) => post.isConnected && postKey(post) === key,
+      const available = feedPosts();
+      const next = neighbors.find(({ key }) =>
+        available.some((post) => postKey(post) === key),
       );
-      if (next) selectPost({ post: next.post });
+      if (next) selectPost({ key: next.key });
+      else if (neighbors[0]) selectPost({ key: neighbors[0].key });
       else clearSelection();
     });
   }
 
   // Register in window capture at document_start, before X's own j/k/l/n
   // shortcuts. Swallow the corresponding keypress/up, too, so n cannot compose.
+  for (const type of ["wheel", "touchstart", "pointerdown", "keydown"])
+    addEventListener(type, stopAlignment, { capture: true, passive: true });
   addEventListener("keydown", handleShortcut, true);
   for (const type of ["keypress", "keyup"])
     addEventListener(
@@ -254,8 +276,8 @@
     }
   }
 
-  async function dismiss({ post, button }) {
-    if (busy || button.disabled || !onForYou()) return;
+  async function dismiss(post) {
+    if (busy || !onForYou()) return;
     if (
       [...document.querySelectorAll(MENU)].some(visible) ||
       document.querySelector('[role="dialog"]')
@@ -265,12 +287,9 @@
     }
     const caret = own({ post: post, selector: '[data-testid="caret"]' });
     const key = postKey(post);
-    if (!caret || !key || button.dataset.postKey !== key) return;
+    if (!caret || !visible(caret) || !key) return;
 
     busy = true;
-    button.disabled = true;
-    button.dataset.state = "pending";
-    button.setAttribute("aria-label", "Sending feedback…");
     const controller = new AbortController();
     pendingFeedback = controller;
     const previousMenus = new Set(document.querySelectorAll(MENU));
@@ -320,12 +339,9 @@
       });
       assertCurrent();
       if (controller.signal.aborted) throw new Error("cancelled");
+      dismissedPosts.set(post, key);
       item.click();
       succeeded = true;
-      button.dataset.state = "done";
-      button.innerHTML = CHECK;
-      button.setAttribute("aria-label", "Not interested selected");
-      button.title = "Not interested selected";
       // X owns the dismissal, confirmation, optional follow-up, and Undo.
       // Never hide a post locally and pretend feedback was sent.
     } catch (error) {
@@ -336,11 +352,7 @@
     } finally {
       document.removeEventListener("pointerdown", cancel, true);
       document.removeEventListener("keydown", cancel, true);
-      if (!succeeded) {
-        button.disabled = false;
-        delete button.dataset.state;
-        button.setAttribute("aria-label", LABEL);
-      }
+      if (!succeeded) dismissedPosts.delete(post);
       busy = false;
       pendingFeedback = null;
     }
@@ -349,62 +361,17 @@
 
   function sync() {
     scheduled = false;
-    const enabled = onForYou();
-    if (
-      !enabled ||
-      (selection &&
-        (!selection.post.isConnected ||
-          postKey(selection.post) !== selection.key))
-    )
+    if (!onForYou()) {
       clearSelection();
-    document.querySelectorAll(BUTTON).forEach((button) => {
-      const post = button.closest(POST);
-      if (!enabled || !post || postKey(post) !== button.dataset.postKey)
-        button.remove();
-    });
-    if (!enabled) return;
-    const primary = document.querySelector('[data-testid="primaryColumn"]');
-    primary.querySelectorAll(POST).forEach((post) => {
-      if (
-        post.parentElement.closest(POST) ||
-        own({ post: post, selector: BUTTON })
-      )
-        return;
-      if (
-        post.querySelector(
-          '[data-testid="placementTracking"], [data-testid="promotedIndicator"]',
-        )
-      )
-        return;
-      const key = postKey(post);
-      const caret = own({ post: post, selector: '[data-testid="caret"]' });
-      if (!key || !caret) return;
-      // Find the shared header row instead of changing X's fixed-width menu wrapper.
-      let anchor = caret;
-      let header = caret.parentElement;
-      while (
-        header &&
-        header !== post &&
-        !header.querySelector('[data-testid="User-Name"]')
-      ) {
-        anchor = header;
-        header = header.parentElement;
-      }
-      if (!header || header === post) return;
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "wheel-button";
-      button.dataset.postKey = key;
-      button.title = "Not interested (n)";
-      button.setAttribute("aria-label", LABEL);
-      button.innerHTML = ICON;
-      button.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        void dismiss({ post, button });
-      });
-      header.insertBefore(button, anchor);
-    });
+      return;
+    }
+    if (!selection) return;
+    // React may replace the article or its class list. Keep identity separately
+    // and restore the marker only on the same tweet, never on a recycled node.
+    selection.post = feedPosts().find(
+      (post) => postKey(post) === selection.key,
+    );
+    paintSelection(selection.post);
   }
 
   function schedule() {
@@ -417,7 +384,7 @@
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ["aria-selected", "href"],
+      attributeFilter: ["aria-selected", "href", "class"],
       characterData: true,
     });
     addEventListener("popstate", schedule);

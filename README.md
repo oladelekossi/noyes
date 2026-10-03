@@ -4,7 +4,7 @@ Fine-tune your X feed from the keyboard.
 
 For agents working on this repository, read [AGENTS.md](AGENTS.md).
 
-wheel adds a quiet ⊖ button beside the menu on posts in your **For You** feed. Click it to select X’s native **Not interested in this post** action. X handles the dismissal, confirmation, any follow-up questions, and Undo.
+wheel lets you move through your **For You** feed and send likes or **Not interested** feedback from the keyboard. A green outline marks the entire selected post. X handles dismissal, confirmation, any follow-up questions, and Undo.
 
 No settings, accounts, API keys, or build step. No automatic feed browsing.
 
@@ -16,7 +16,7 @@ For Chrome and Chromium-based browsers:
 2. Open your browser’s extensions page (`chrome://extensions` in Chrome).
 3. Enable **Developer mode**.
 4. Choose **Load unpacked** and select the **extension** folder inside this repository.
-5. Refresh X, open **For You**, and look for the small circle-minus beside each post’s menu.
+5. Refresh X, open **For You**, and press `k` to select a post.
 
 After changing the extension files, click **Reload** on wheel’s extension card and refresh X.
 
@@ -26,18 +26,18 @@ After changing the extension files, click **Reload** on wheel’s extension card
 | --- | --- |
 | `k` | Next post |
 | `j` | Previous post |
-| `l` | Like the selected post (never unlike) |
+| `l` | Like, then select the next post (never unlike) |
 | `n` | Not interested, then select the next post |
 
-The first navigation key selects the first visible post. An orange line marks the selection; subsequent navigation scrolls it into view. You can also press `l` or `n` immediately to act on the first visible post. After manually scrolling past the selection, the next shortcut starts from your visible feed.
+The first navigation key selects the first visible post. A green box outlines the selected post; navigation shows its top below the feed header. The green box follows the same tweet through X’s page updates. You can also press `l` or `n` immediately to act on the first visible post. After manually scrolling past the selection, the next shortcut starts from your visible feed. `l` also advances past already-liked posts; at the last loaded post it stays put. `n` advances as soon as the native feedback action is clicked, and stays on the current post if feedback is unavailable.
 
 Shortcuts work in **For You**, stay inactive while typing or using a dialog/menu, and leave modifier shortcuts alone. Holding a key does not repeat actions. wheel takes precedence over X’s native shortcuts for these four keys in this context.
 
 ## What to expect
 
 - Works with X’s **English** web interface on `x.com` and `twitter.com`.
-- Buttons appear only in the **For You** feed, including newly loaded posts as you scroll.
-- Keyboard accessible: Tab to the button and press Enter or Space.
+- Shortcuts work only in the **For You** feed, including newly loaded posts as you scroll.
+- No extra buttons are added to posts.
 - If X doesn’t offer the exact feedback action, wheel leaves the post alone and shows a short notice. It never substitutes mute, block, report, or ad feedback.
 - A native menu may briefly appear while the action runs. Any follow-up prompt stays under your control.
 - Navigating away, pressing a key, or clicking elsewhere cancels an action that is still waiting for a menu.
@@ -66,7 +66,7 @@ The tests use a simulated X feed to exercise post targeting, native Undo, missin
 
 To use a separately installed Chromium or Chrome for Testing binary for the extension-loading test, set `WHEEL_CHROMIUM_EXECUTABLE` to its executable path. Regular Chrome releases may not permit command-line extension loading.
 
-Live compatibility with a signed-in X account remains to be verified.
+Installation, keyboard selection, the green outline, and removal of the extra buttons were verified on a signed-in X account. Live like/feedback dispatch and automatic advancement still need live verification.
 
 ## Code quality with vet
 
