@@ -19,8 +19,14 @@ test('packaged extension injects automatically and sends native feedback', async
     // No addScriptTag: Chrome must load the real manifest and isolated content script.
     await expect(page.locator('.wheel-button')).toHaveCount(3);
     await expect(page.locator('.wheel-button').first()).toHaveCSS('width', '32px');
-    await page.locator('.wheel-button').nth(1).click();
+    await page.keyboard.press('k');
+    await page.keyboard.press('k');
+    await page.keyboard.press('l');
+    await expect.poll(() => page.evaluate(() => window.likes)).toEqual(['102']);
+    await page.keyboard.press('n');
     await expect.poll(() => page.evaluate(() => window.feedback)).toEqual(['102']);
     expect(await page.evaluate(() => window.otherActions)).toEqual([]);
+    expect(await page.evaluate(() => window.nativeKeys)).toEqual([]);
+    await expect(page.locator('.wheel-selected .wheel-button')).toHaveAttribute('data-post-key', '103');
   } finally { await context.close(); }
 });

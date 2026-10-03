@@ -1,14 +1,14 @@
 {
   "manifest_version": 3,
   "name": "wheel",
-  "version": "0.1.0",
-  "description": "A small Not interested button for your X feed.",
+  "version": "0.2.0",
+  "description": "Tune your X feed with j/k navigation, l to like, and n for Not interested.",
   "content_scripts": [
     {
       "matches": ["https://x.com/*", "https://twitter.com/*"],
       "js": ["content.js"],
       "css": ["content.css"],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     }
   ]
 }

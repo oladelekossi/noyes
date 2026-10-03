@@ -48,3 +48,9 @@
   .wheel-button { transition: none; }
   .wheel-button[data-state="pending"] svg { animation: none; }
 }
+
+article.wheel-selected {
+  box-shadow: inset 3px 0 0 #f97316;
+  scroll-margin-top: 100px;
+  scroll-margin-bottom: 40px;
+}

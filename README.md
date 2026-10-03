@@ -1,6 +1,6 @@
 # wheel
 
-Fine-tune your X feed. One small button.
+Fine-tune your X feed from the keyboard.
 
 wheel adds a quiet ⊖ button beside the menu on posts in your **For You** feed. Click it to select X’s native **Not interested in this post** action. X handles the dismissal, confirmation, any follow-up questions, and Undo.
 
@@ -17,6 +17,19 @@ For Chrome and Chromium-based browsers:
 5. Refresh X, open **For You**, and look for the small circle-minus beside each post’s menu.
 
 After changing the extension files, click **Reload** on wheel’s extension card and refresh X.
+
+## Keyboard shortcuts
+
+| Key | Action |
+| --- | --- |
+| `k` | Next post |
+| `j` | Previous post |
+| `l` | Like the selected post (never unlike) |
+| `n` | Not interested, then select the next post |
+
+The first navigation key selects the first visible post. An orange line marks the selection; subsequent navigation scrolls it into view. You can also press `l` or `n` immediately to act on the first visible post. After manually scrolling past the selection, the next shortcut starts from your visible feed.
+
+Shortcuts work in **For You**, stay inactive while typing or using a dialog/menu, and leave modifier shortcuts alone. Holding a key does not repeat actions. wheel takes precedence over X’s native shortcuts for these four keys in this context.
 
 ## What to expect
 
@@ -44,9 +57,9 @@ npm test
 npm run package
 ```
 
-The installable extension is the `extension/` directory. Packaging writes `dist/wheel-0.1.0.zip`, containing only the extension files. Extract it before using Load unpacked.
+The installable extension is the `extension/` directory. Packaging writes `dist/wheel-0.2.0.zip`, containing only the extension files. Extract it before using Load unpacked.
 
-The tests use a simulated X feed to exercise post targeting, native Undo, missing menu actions, tab changes, delayed menus, cancellation, recycled posts, keyboard access, and light/dark appearance. An additional test loads the real extension in an isolated Chromium profile and verifies automatic injection. No tests submit feedback on a real X account.
+The tests use a simulated X feed to exercise post targeting, native Undo, missing menu actions, tab changes, delayed menus, cancellation, recycled posts, keyboard navigation and actions, typing protection, native shortcut conflicts, and light/dark appearance. An additional test loads the real extension in an isolated Chromium profile and verifies automatic injection. No tests submit feedback on a real X account.
 
 To use a separately installed Chromium or Chrome for Testing binary for the extension-loading test, set `WHEEL_CHROMIUM_EXECUTABLE` to its executable path. Regular Chrome releases may not permit command-line extension loading.
 
