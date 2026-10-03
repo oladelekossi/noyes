@@ -53,6 +53,7 @@ wheel runs only on X/Twitter pages. It reads the displayed post header and menu 
 npm ci
 npx playwright install chromium
 npm run check
+npm run test:vet
 npm test
 npm run package
 ```
@@ -64,3 +65,17 @@ The tests use a simulated X feed to exercise post targeting, native Undo, missin
 To use a separately installed Chromium or Chrome for Testing binary for the extension-loading test, set `WHEEL_CHROMIUM_EXECUTABLE` to its executable path. Regular Chrome releases may not permit command-line extension loading.
 
 Live compatibility with a signed-in X account remains to be verified.
+
+## Code quality with vet
+
+`npm run check` runs [vet](https://github.com/gdevillele/vet). It checks every tracked or unignored JavaScript file (`.js`, `.mjs`, `.cjs`), including tests and tooling, plus GitHub workflows. Generated output and dependencies are ignored by Git. It enforces:
+
+- At most one function parameter; related arguments use a named options object.
+- Prettier formatting.
+- Full commit SHA pins for external GitHub Actions.
+
+Use `npm run format` to fix formatting, `npm run vet:all` for all diagnostics as JSON, or `npm run vet -- extension/content.js` to inspect a file. The same check runs in GitHub Actions. `npm run test:vet` verifies that the integration rejects real JavaScript violations, invalid syntax, unpinned actions, and empty input.
+
+The pinned upstream runner discovers only TypeScript files. `scripts/vet.mjs` selects wheel's JavaScript and calls the upstream analyzer and workflow checker directly. It also runs Node's syntax check so invalid JavaScript cannot silently pass. The browser extension stays plain JavaScript with no build step. The test feed's script lives in `tests/feed.js` so it is checked too; HTML, CSS, and JSON are outside vet's JavaScript analysis.
+
+See [vendor/README.md](vendor/README.md) for the exact upstream revision, license, archive checksum, and rebuild instructions. Rules beyond those listed above retain upstream defaults.

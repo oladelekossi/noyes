@@ -5,13 +5,18 @@
   "description": "Fine-tune your X feed, one click at a time.",
   "scripts": {
     "test": "playwright test",
-    "check": "node --check extension/content.js && node --check scripts/package.mjs",
-    "package": "node scripts/package.mjs"
+    "check": "npm run vet",
+    "package": "node scripts/package.mjs",
+    "vet": "node scripts/vet.mjs",
+    "vet:all": "node scripts/vet.mjs --json",
+    "format": "prettier --write \"extension/*.{js,css,json}\" \"scripts/*.mjs\" \"tests/*.{js,mjs}\" playwright.config.mjs",
+    "test:vet": "node --test scripts/vet.test.mjs"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0"
+    "@playwright/test": "^1.63.0",
+    "@vet/typescript": "file:vendor/vet-typescript-8aae498.tgz"
   }
 }

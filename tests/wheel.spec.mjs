@@ -1,231 +1,328 @@
-import { test, expect } from '@playwright/test';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-const fixture = readFileSync(new URL('./feed.html', import.meta.url), 'utf8');
-const script = resolve('extension/content.js');
-const css = resolve('extension/content.css');
+import { test, expect } from "@playwright/test";
+import { fixture } from "./fixture.mjs";
+import { resolve } from "node:path";
+const script = resolve("extension/content.js");
+const css = resolve("extension/content.css");
 
 async function start(page) {
-  await page.route('https://x.com/**', route => route.fulfill({ contentType: 'text/html', body: fixture }));
-  await page.goto('https://x.com/home');
+  await page.route("https://x.com/**", (route) =>
+    route.fulfill({ contentType: "text/html", body: fixture }),
+  );
+  await page.goto("https://x.com/home");
   await page.addStyleTag({ path: css });
   await page.addScriptTag({ path: script });
-  await expect(page.locator('.wheel-button')).toHaveCount(3);
+  await expect(page.locator(".wheel-button")).toHaveCount(3);
 }
 test.beforeEach(async ({ page }) => start(page));
 
-test('one click sends native feedback for exactly the chosen post and keeps Undo', async ({ page }) => {
-  await page.locator('.wheel-button').nth(1).click();
-  await expect.poll(() => page.evaluate(() => window.feedback)).toEqual(['102']);
+test("one click sends native feedback for exactly the chosen post and keeps Undo", async ({
+  page,
+}) => {
+  await page.locator(".wheel-button").nth(1).click();
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["102"]);
   expect(await page.evaluate(() => window.otherActions)).toEqual([]);
-  await expect(page.locator('.native-feedback')).toBeVisible();
-  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(page.locator(".native-feedback")).toBeVisible();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.feedback)).toEqual([]);
-  await expect(page.locator('.wheel-button')).toHaveCount(3);
+  await expect(page.locator(".wheel-button")).toHaveCount(3);
 });
 
-test('following, profile, and post detail pages have no wheel buttons', async ({ page }) => {
-  await page.getByRole('tab', { name: 'Following', exact: true }).click();
-  await expect(page.locator('.wheel-button')).toHaveCount(0);
-  await page.getByRole('tab', { name: 'For you', exact: true }).click();
-  await expect(page.locator('.wheel-button')).toHaveCount(3);
-  await page.evaluate(() => history.pushState({}, '', '/alex'));
-  await expect(page.locator('.wheel-button')).toHaveCount(0);
-  await page.evaluate(() => history.pushState({}, '', '/home'));
-  await expect(page.locator('.wheel-button')).toHaveCount(3);
-  await page.evaluate(() => history.pushState({}, '', '/alex/status/101'));
-  await expect(page.locator('.wheel-button')).toHaveCount(0);
+test("following, profile, and post detail pages have no wheel buttons", async ({
+  page,
+}) => {
+  await page.getByRole("tab", { name: "Following", exact: true }).click();
+  await expect(page.locator(".wheel-button")).toHaveCount(0);
+  await page.getByRole("tab", { name: "For you", exact: true }).click();
+  await expect(page.locator(".wheel-button")).toHaveCount(3);
+  await page.evaluate(() => history.pushState({}, "", "/alex"));
+  await expect(page.locator(".wheel-button")).toHaveCount(0);
+  await page.evaluate(() => history.pushState({}, "", "/home"));
+  await expect(page.locator(".wheel-button")).toHaveCount(3);
+  await page.evaluate(() => history.pushState({}, "", "/alex/status/101"));
+  await expect(page.locator(".wheel-button")).toHaveCount(0);
 });
 
-test('handles infinite scrolling, recycled posts, and repeat injection without duplicates', async ({ page }) => {
-  await page.evaluate(() => window.addPost('104'));
-  await expect(page.locator('.wheel-button')).toHaveCount(4);
+test("handles infinite scrolling, recycled posts, and repeat injection without duplicates", async ({
+  page,
+}) => {
+  await page.evaluate(() => window.addPost({ id: "104" }));
+  await expect(page.locator(".wheel-button")).toHaveCount(4);
   await page.addScriptTag({ path: script });
-  await page.evaluate(() => document.querySelector('time').closest('a').href = '/alex/status/999');
-  await expect(page.locator('.wheel-button').first()).toHaveAttribute('data-post-key', '999');
-  await expect(page.locator('.wheel-button')).toHaveCount(4);
+  await page.evaluate(
+    () =>
+      (document.querySelector("time").closest("a").href = "/alex/status/999"),
+  );
+  await expect(page.locator(".wheel-button").first()).toHaveAttribute(
+    "data-post-key",
+    "999",
+  );
+  await expect(page.locator(".wheel-button")).toHaveCount(4);
 });
 
-test('missing action never triggers mute, block, report, or local dismissal', async ({ page }) => {
-  await page.evaluate(() => window.options = ['Mute @example', 'Block @example', 'Report post', 'Not interested in this ad']);
-  await page.locator('.wheel-button').first().click();
-  await expect(page.getByRole('status')).toContainText('Nothing was changed');
+test("missing action never triggers mute, block, report, or local dismissal", async ({
+  page,
+}) => {
+  await page.evaluate(
+    () =>
+      (window.options = [
+        "Mute @example",
+        "Block @example",
+        "Report post",
+        "Not interested in this ad",
+      ]),
+  );
+  await page.locator(".wheel-button").first().click();
+  await expect(page.getByRole("status")).toContainText("Nothing was changed");
   expect(await page.evaluate(() => window.otherActions)).toEqual([]);
   expect(await page.evaluate(() => window.feedback)).toEqual([]);
-  await expect(page.locator('article')).toHaveCount(3);
-  await expect(page.locator('.wheel-button').first()).toBeEnabled();
+  await expect(page.locator("article")).toHaveCount(3);
+  await expect(page.locator(".wheel-button").first()).toBeEnabled();
 });
 
-test('handles delayed menus and delayed feedback labels', async ({ page }) => {
-  await page.evaluate(() => { window.menuDelay = 220; window.itemDelay = 220; });
-  await page.locator('.wheel-button').first().click();
-  await expect.poll(() => page.evaluate(() => window.feedback)).toEqual(['101']);
+test("handles delayed menus and delayed feedback labels", async ({ page }) => {
+  await page.evaluate(() => {
+    window.menuDelay = 220;
+    window.itemDelay = 220;
+  });
+  await page.locator(".wheel-button").first().click();
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["101"]);
 });
 
-test('does not touch an already open native menu', async ({ page }) => {
-  await page.locator('[data-testid=caret]').nth(1).click();
-  await expect(page.getByRole('menu')).toBeVisible();
-  await page.locator('.wheel-button').last().click();
-  await expect(page.getByRole('status')).toContainText('Close the open menu');
+test("does not touch an already open native menu", async ({ page }) => {
+  await page.locator("[data-testid=caret]").nth(1).click();
+  await expect(page.getByRole("menu")).toBeVisible();
+  await page.locator(".wheel-button").last().click();
+  await expect(page.getByRole("status")).toContainText("Close the open menu");
   expect(await page.evaluate(() => window.feedback)).toEqual([]);
 });
 
-test('navigation cancels pending feedback', async ({ page }) => {
-  await page.evaluate(() => window.menuDelay = 300);
-  await page.locator('.wheel-button').first().click();
-  await page.getByRole('tab', { name: 'Following', exact: true }).click();
-  await expect(page.getByRole('menu')).toBeVisible();
+test("navigation cancels pending feedback", async ({ page }) => {
+  await page.evaluate(() => (window.menuDelay = 300));
+  await page.locator(".wheel-button").first().click();
+  await page.getByRole("tab", { name: "Following", exact: true }).click();
+  await expect(page.getByRole("menu")).toBeVisible();
   // Wait past the action deadline to ensure no delayed feedback is dispatched.
   await page.waitForTimeout(1800);
   expect(await page.evaluate(() => window.feedback)).toEqual([]);
 });
 
-test('Escape cancels pending feedback', async ({ page }) => {
-  await page.evaluate(() => window.menuDelay = 250);
-  await page.locator('.wheel-button').first().click();
-  await page.keyboard.press('Escape');
+test("Escape cancels pending feedback", async ({ page }) => {
+  await page.evaluate(() => (window.menuDelay = 250));
+  await page.locator(".wheel-button").first().click();
+  await page.keyboard.press("Escape");
   await page.waitForTimeout(1800);
   expect(await page.evaluate(() => window.feedback)).toEqual([]);
 });
 
-test('post recycling during the menu wait cancels feedback', async ({ page }) => {
-  await page.evaluate(() => window.menuDelay = 250);
-  await page.locator('.wheel-button').first().click();
-  await page.evaluate(() => document.querySelector('time').closest('a').href = '/alex/status/999');
+test("post recycling during the menu wait cancels feedback", async ({
+  page,
+}) => {
+  await page.evaluate(() => (window.menuDelay = 250));
+  await page.locator(".wheel-button").first().click();
+  await page.evaluate(
+    () =>
+      (document.querySelector("time").closest("a").href = "/alex/status/999"),
+  );
   await page.waitForTimeout(1800);
   expect(await page.evaluate(() => window.feedback)).toEqual([]);
 });
 
-test('keyboard activation and the legacy Tweet label work', async ({ page }) => {
-  await page.evaluate(() => window.options = ['Not interested in this Tweet', 'Block @example']);
-  await page.locator('.wheel-button').first().focus();
-  await page.keyboard.press('Enter');
-  await expect.poll(() => page.evaluate(() => window.feedback)).toEqual(['101']);
+test("keyboard activation and the legacy Tweet label work", async ({
+  page,
+}) => {
+  await page.evaluate(
+    () => (window.options = ["Not interested in this Tweet", "Block @example"]),
+  );
+  await page.locator(".wheel-button").first().focus();
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["101"]);
 });
 
-test('does not add controls to ads or nested quoted posts', async ({ page }) => {
+test("does not add controls to ads or nested quoted posts", async ({
+  page,
+}) => {
   await page.evaluate(() => {
-    const ad = window.addPost('105');
-    const marker = document.createElement('div'); marker.dataset.testid = 'placementTracking'; ad.append(marker);
-    const quote = window.addPost('106'); document.querySelector('article').append(quote);
+    const ad = window.addPost({ id: "105" });
+    const marker = document.createElement("div");
+    marker.dataset.testid = "placementTracking";
+    ad.append(marker);
+    const quote = window.addPost({ id: "106" });
+    document.querySelector("article").append(quote);
   });
-  await expect(page.locator('.wheel-button')).toHaveCount(3);
+  await expect(page.locator(".wheel-button")).toHaveCount(3);
 });
 
-test('button is compact in light and dark layouts', async ({ page }, testInfo) => {
-  const button = page.locator('.wheel-button').first();
-  await expect(button).toHaveAccessibleName('Not interested');
+test("button is compact in light and dark layouts", async ({ page }) => {
+  const testInfo = test.info();
+  const button = page.locator(".wheel-button").first();
+  await expect(button).toHaveAccessibleName("Not interested");
   const box = await button.boundingBox();
-  expect(box.width).toBe(32); expect(box.height).toBe(32);
-  await page.screenshot({ path: testInfo.outputPath('wheel-light.png') });
-  await page.evaluate(() => document.body.classList.add('dark'));
+  expect(box.width).toBe(32);
+  expect(box.height).toBe(32);
+  await page.screenshot({ path: testInfo.outputPath("wheel-light.png") });
+  await page.evaluate(() => document.body.classList.add("dark"));
   await button.hover();
-  await page.screenshot({ path: testInfo.outputPath('wheel-dark.png') });
+  await page.screenshot({ path: testInfo.outputPath("wheel-dark.png") });
 });
 
-test('k selects the first visible post then advances; j moves back without wrapping', async ({ page }) => {
-  const selected = page.locator('.wheel-selected .wheel-button');
-  await page.keyboard.press('k');
-  await expect(selected).toHaveAttribute('data-post-key', '101');
-  await page.keyboard.press('k');
-  await expect(selected).toHaveAttribute('data-post-key', '102');
-  await page.keyboard.press('j');
-  await expect(selected).toHaveAttribute('data-post-key', '101');
-  await page.keyboard.press('j');
-  await expect(selected).toHaveAttribute('data-post-key', '101');
+test("k selects the first visible post then advances; j moves back without wrapping", async ({
+  page,
+}) => {
+  const selected = page.locator(".wheel-selected .wheel-button");
+  await page.keyboard.press("k");
+  await expect(selected).toHaveAttribute("data-post-key", "101");
+  await page.keyboard.press("k");
+  await expect(selected).toHaveAttribute("data-post-key", "102");
+  await page.keyboard.press("j");
+  await expect(selected).toHaveAttribute("data-post-key", "101");
+  await page.keyboard.press("j");
+  await expect(selected).toHaveAttribute("data-post-key", "101");
 });
 
-test('l likes the selected post and never toggles it off', async ({ page }) => {
-  await page.keyboard.press('k');
-  await page.keyboard.press('k');
-  await page.keyboard.press('l');
-  await expect.poll(() => page.evaluate(() => window.likes)).toEqual(['102']);
-  await page.keyboard.press('l');
-  await expect(page.locator('.wheel-selected [data-testid=unlike]')).toHaveCount(1);
-  expect(await page.evaluate(() => window.likes)).toEqual(['102']);
+test("l likes the selected post and never toggles it off", async ({ page }) => {
+  await page.keyboard.press("k");
+  await page.keyboard.press("k");
+  await page.keyboard.press("l");
+  await expect.poll(() => page.evaluate(() => window.likes)).toEqual(["102"]);
+  await page.keyboard.press("l");
+  await expect(
+    page.locator(".wheel-selected [data-testid=unlike]"),
+  ).toHaveCount(1);
+  expect(await page.evaluate(() => window.likes)).toEqual(["102"]);
 });
 
-test('n sends feedback on the selected post and advances selection', async ({ page }) => {
-  await page.keyboard.press('k');
-  await page.keyboard.press('k');
-  await page.keyboard.press('n');
-  await expect.poll(() => page.evaluate(() => window.feedback)).toEqual(['102']);
-  await expect(page.locator('.wheel-selected .wheel-button')).toHaveAttribute('data-post-key', '103');
-  await page.keyboard.press('l');
-  await expect.poll(() => page.evaluate(() => window.likes)).toEqual(['103']);
+test("n sends feedback on the selected post and advances selection", async ({
+  page,
+}) => {
+  await page.keyboard.press("k");
+  await page.keyboard.press("k");
+  await page.keyboard.press("n");
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["102"]);
+  await expect(page.locator(".wheel-selected .wheel-button")).toHaveAttribute(
+    "data-post-key",
+    "103",
+  );
+  await page.keyboard.press("l");
+  await expect.poll(() => page.evaluate(() => window.likes)).toEqual(["103"]);
 });
 
-test('l and n can start from the first visible post without a navigation key', async ({ page }) => {
-  await page.keyboard.press('l');
-  await expect.poll(() => page.evaluate(() => window.likes)).toEqual(['101']);
-  await page.keyboard.press('n');
-  await expect.poll(() => page.evaluate(() => window.feedback)).toEqual(['101']);
+test("l and n can start from the first visible post without a navigation key", async ({
+  page,
+}) => {
+  await page.keyboard.press("l");
+  await expect.poll(() => page.evaluate(() => window.likes)).toEqual(["101"]);
+  await page.keyboard.press("n");
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["101"]);
 });
 
-test('typing, composition, and modifier shortcuts do not trigger wheel', async ({ page }) => {
+test("typing, composition, and modifier shortcuts do not trigger wheel", async ({
+  page,
+}) => {
   await page.evaluate(() => {
-    const controls = document.createElement('div');
-    controls.innerHTML = '<input aria-label="Search"><textarea aria-label="Draft"></textarea><div contenteditable="true" role="textbox" aria-label="Composer"></div><div role="combobox" tabindex="0" aria-label="Search suggestions"></div>';
+    const controls = document.createElement("div");
+    controls.innerHTML =
+      '<input aria-label="Search"><textarea aria-label="Draft"></textarea><div contenteditable="true" role="textbox" aria-label="Composer"></div><div role="combobox" tabindex="0" aria-label="Search suggestions"></div>';
     document.body.append(controls);
   });
-  for (const name of ['Search', 'Draft', 'Composer', 'Search suggestions']) {
+  for (const name of ["Search", "Draft", "Composer", "Search suggestions"]) {
     await page.getByLabel(name, { exact: true }).focus();
-    await page.keyboard.type('jkln');
+    await page.keyboard.type("jkln");
   }
-  await expect(page.getByLabel('Search', { exact: true })).toHaveValue('jkln');
-  await expect(page.getByLabel('Draft')).toHaveValue('jkln');
-  await expect(page.getByLabel('Composer')).toHaveText('jkln');
+  await expect(page.getByLabel("Search", { exact: true })).toHaveValue("jkln");
+  await expect(page.getByLabel("Draft")).toHaveValue("jkln");
+  await expect(page.getByLabel("Composer")).toHaveText("jkln");
   await page.evaluate(() => document.activeElement.blur());
-  for (const shortcut of ['Control+l', 'Alt+n', 'Meta+k', 'Shift+j']) await page.keyboard.press(shortcut);
-  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'n', isComposing: true, bubbles: true })));
+  for (const shortcut of ["Control+l", "Alt+n", "Meta+k", "Shift+j"])
+    await page.keyboard.press(shortcut);
+  await page.evaluate(() =>
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "n",
+        isComposing: true,
+        bubbles: true,
+      }),
+    ),
+  );
   expect(await page.evaluate(() => window.likes)).toEqual([]);
   expect(await page.evaluate(() => window.feedback)).toEqual([]);
-  await expect(page.locator('.wheel-selected')).toHaveCount(0);
+  await expect(page.locator(".wheel-selected")).toHaveCount(0);
 });
 
-test('shortcuts respect dialogs and other feed tabs', async ({ page }) => {
+test("shortcuts respect dialogs and other feed tabs", async ({ page }) => {
   await page.evaluate(() => {
-    const dialog = document.createElement('div'); dialog.setAttribute('role', 'dialog'); dialog.textContent = 'Compose'; document.body.append(dialog);
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    dialog.textContent = "Compose";
+    document.body.append(dialog);
   });
-  for (const key of ['k', 'l', 'n']) await page.keyboard.press(key);
-  await expect(page.locator('.wheel-selected')).toHaveCount(0);
-  await page.evaluate(() => document.querySelector('[role=dialog]').remove());
-  await page.getByRole('tab', { name: 'Following', exact: true }).click();
-  for (const key of ['k', 'l', 'n']) await page.keyboard.press(key);
+  for (const key of ["k", "l", "n"]) await page.keyboard.press(key);
+  await expect(page.locator(".wheel-selected")).toHaveCount(0);
+  await page.evaluate(() => document.querySelector("[role=dialog]").remove());
+  await page.getByRole("tab", { name: "Following", exact: true }).click();
+  for (const key of ["k", "l", "n"]) await page.keyboard.press(key);
   expect(await page.evaluate(() => window.likes)).toEqual([]);
   expect(await page.evaluate(() => window.feedback)).toEqual([]);
 });
 
-test('holding n sends feedback only once', async ({ page }) => {
-  await page.keyboard.down('n');
-  await expect.poll(() => page.evaluate(() => window.feedback)).toEqual(['101']);
-  await page.keyboard.down('n');
-  await page.keyboard.up('n');
-  expect(await page.evaluate(() => window.feedback)).toEqual(['101']);
+test("holding n sends feedback only once", async ({ page }) => {
+  await page.keyboard.down("n");
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["101"]);
+  await page.keyboard.down("n");
+  await page.keyboard.up("n");
+  expect(await page.evaluate(() => window.feedback)).toEqual(["101"]);
 });
 
-test('keyboard selection follows new posts and resets after recycling', async ({ page }) => {
-  for (let i = 0; i < 3; i++) await page.keyboard.press('k');
-  await page.evaluate(() => window.addPost('104'));
-  await page.keyboard.press('k');
-  await expect(page.locator('.wheel-selected .wheel-button')).toHaveAttribute('data-post-key', '104');
-  await page.evaluate(() => document.querySelector('.wheel-selected time').closest('a').href = '/alex/status/999');
-  await expect(page.locator('.wheel-selected')).toHaveCount(0);
+test("keyboard selection follows new posts and resets after recycling", async ({
+  page,
+}) => {
+  for (let i = 0; i < 3; i++) await page.keyboard.press("k");
+  await page.evaluate(() => window.addPost({ id: "104" }));
+  await page.keyboard.press("k");
+  await expect(page.locator(".wheel-selected .wheel-button")).toHaveAttribute(
+    "data-post-key",
+    "104",
+  );
+  await page.evaluate(
+    () =>
+      (document.querySelector(".wheel-selected time").closest("a").href =
+        "/alex/status/999"),
+  );
+  await expect(page.locator(".wheel-selected")).toHaveCount(0);
 });
 
-test('scrolling past a selection makes l target the visible post', async ({ page }) => {
+test("scrolling past a selection makes l target the visible post", async ({
+  page,
+}) => {
   await page.evaluate(() => {
-    document.querySelectorAll('article').forEach(post => post.style.minHeight = '700px');
+    document
+      .querySelectorAll("article")
+      .forEach((post) => (post.style.minHeight = "700px"));
   });
-  await page.keyboard.press('k');
-  await page.locator('article').nth(2).scrollIntoViewIfNeeded();
-  await page.keyboard.press('l');
-  await expect.poll(() => page.evaluate(() => window.likes)).toEqual(['103']);
+  await page.keyboard.press("k");
+  await page.locator("article").nth(2).scrollIntoViewIfNeeded();
+  await page.keyboard.press("l");
+  await expect.poll(() => page.evaluate(() => window.likes)).toEqual(["103"]);
 });
 
-test('selected post has a visible marker', async ({ page }, testInfo) => {
-  await page.keyboard.press('k');
-  await page.keyboard.press('k');
-  await expect(page.locator('.wheel-selected')).toHaveCSS('box-shadow', 'rgb(249, 115, 22) 3px 0px 0px 0px inset');
-  await page.screenshot({ path: testInfo.outputPath('wheel-keyboard.png') });
+test("selected post has a visible marker", async ({ page }) => {
+  const testInfo = test.info();
+  await page.keyboard.press("k");
+  await page.keyboard.press("k");
+  await expect(page.locator(".wheel-selected")).toHaveCSS(
+    "box-shadow",
+    "rgb(249, 115, 22) 3px 0px 0px 0px inset",
+  );
+  await page.screenshot({ path: testInfo.outputPath("wheel-keyboard.png") });
 });

@@ -14,18 +14,34 @@
   background: transparent;
   color: rgb(113, 118, 123);
   cursor: pointer;
-  transition: color 120ms ease, background-color 120ms ease;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
 }
 .wheel-button:hover,
 .wheel-button:focus-visible {
   background: rgba(249, 115, 22, 0.12);
   color: #ea580c;
 }
-.wheel-button:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
-.wheel-button svg { width: 18px; height: 18px; pointer-events: none; }
-.wheel-button:disabled { cursor: default; opacity: 0.55; }
-.wheel-button[data-state="pending"] svg { animation: wheel-pulse 800ms ease-in-out infinite alternate; }
-.wheel-button[data-state="done"] { color: #16a34a; }
+.wheel-button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+.wheel-button svg {
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+.wheel-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.wheel-button[data-state="pending"] svg {
+  animation: wheel-pulse 800ms ease-in-out infinite alternate;
+}
+.wheel-button[data-state="done"] {
+  color: #16a34a;
+}
 .wheel-notice {
   position: fixed;
   bottom: 28px;
@@ -40,13 +56,23 @@
   background: #171717;
   color: #fafafa;
   box-shadow: 0 4px 24px #0003;
-  font: 14px/1.4 system-ui, sans-serif;
+  font:
+    14px/1.4 system-ui,
+    sans-serif;
   pointer-events: none;
 }
-@keyframes wheel-pulse { to { opacity: 0.3; } }
+@keyframes wheel-pulse {
+  to {
+    opacity: 0.3;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .wheel-button { transition: none; }
-  .wheel-button[data-state="pending"] svg { animation: none; }
+  .wheel-button {
+    transition: none;
+  }
+  .wheel-button[data-state="pending"] svg {
+    animation: none;
+  }
 }
 
 article.wheel-selected {
