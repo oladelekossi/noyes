@@ -1,0 +1,17 @@
+{
+  "name": "wheel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fine-tune your X feed, one click at a time.",
+  "scripts": {
+    "test": "playwright test",
+    "check": "node --check extension/content.js && node --check scripts/package.mjs",
+    "package": "node scripts/package.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}
