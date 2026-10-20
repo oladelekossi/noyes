@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "wheel",
   "version": "0.2.0",
-  "description": "Tune your X feed with j/k navigation, l to like, and n for Not interested.",
+  "description": "Tune your X feed with j/k navigation, l to like, and n for Not interested, and u to undo feedback.",
   "content_scripts": [
     {
       "matches": ["https://x.com/*", "https://twitter.com/*"],

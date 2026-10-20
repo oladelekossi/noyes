@@ -17,6 +17,33 @@
     sans-serif;
   pointer-events: none;
 }
+/* Wheel owns the scroll anchor only during a keyboard navigation transition. */
+html.wheel-aligning {
+  overflow-anchor: none !important;
+  scroll-snap-type: y mandatory !important;
+}
+html.wheel-aligning article.wheel-selected:not(.wheel-thread),
+html.wheel-aligning article.wheel-thread-start {
+  position: relative;
+  /* X uses hidden here, which creates an inner scroll container and captures
+     the snap target. Clip preserves clipping without creating that scroller. */
+  overflow: clip !important;
+}
+/* A tall article is a large snap area, which still permits scrolling inside it.
+   Use its one-pixel leading edge so the header is the only snap destination. */
+html.wheel-aligning article.wheel-selected:not(.wheel-thread)::before,
+html.wheel-aligning article.wheel-thread-start::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+  scroll-margin-top: 100px;
+  scroll-snap-align: start !important;
+}
+
 article.wheel-selected {
   outline: 2px solid #22c55e !important;
   outline-offset: -2px !important;
@@ -28,4 +55,24 @@ article.wheel-selected {
    Keep wheel's post outline as the single marker while navigating it. */
 :focus:has(article.wheel-selected) {
   outline: none !important;
+}
+
+/* Join article edges into one box without changing X's layout or DOM parents. */
+article.wheel-selected.wheel-thread {
+  outline: none !important;
+  box-shadow:
+    inset 2px 0 #22c55e,
+    inset -2px 0 #22c55e !important;
+}
+article.wheel-selected.wheel-thread-start {
+  box-shadow:
+    inset 2px 0 #22c55e,
+    inset -2px 0 #22c55e,
+    inset 0 2px #22c55e !important;
+}
+article.wheel-selected.wheel-thread-end {
+  box-shadow:
+    inset 2px 0 #22c55e,
+    inset -2px 0 #22c55e,
+    inset 0 -2px #22c55e !important;
 }

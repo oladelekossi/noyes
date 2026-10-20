@@ -4,7 +4,7 @@ Fine-tune your X feed from the keyboard.
 
 For agents working on this repository, read [AGENTS.md](AGENTS.md).
 
-wheel lets you move through your **For You** feed and send likes or **Not interested** feedback from the keyboard. A green outline marks the entire selected post. X handles dismissal, confirmation, any follow-up questions, and Undo.
+wheel lets you move through your **For You** feed and send likes or **Not interested** feedback from the keyboard. A green outline marks the selected post or connected conversation. X handles dismissal, confirmation, any follow-up questions, and Undo.
 
 No settings, accounts, API keys, or build step. No automatic feed browsing.
 
@@ -24,23 +24,28 @@ After changing the extension files, click **Reload** on wheel’s extension card
 
 | Key | Action |
 | --- | --- |
-| `k` | Next post |
-| `j` | Previous post |
+| `k` | Next post or conversation |
+| `j` | Previous post or conversation |
 | `l` | Like, then select the next post (never unlike) |
-| `n` | Not interested, then select the next post |
+| `n` | Not interested, or skip when feedback is unavailable |
+| `u` | Undo the latest `n` dismissal while X still offers Undo |
 
-The first navigation key selects the first visible post. A green box outlines the selected post; navigation shows its top below the feed header. The green box follows the same tweet through X’s page updates. You can also press `l` or `n` immediately to act on the first visible post. After manually scrolling past the selection, the next shortcut starts from your visible feed. `l` also advances past already-liked posts; at the last loaded post it stays put. `n` advances as soon as the native feedback action is clicked, and stays on the current post if feedback is unavailable.
+The first navigation key selects the first visible post. A green box outlines the selected post; navigation shows its top below the feed header, and puts it back there if X shifts the feed in the moment after you navigate. The green box follows the same tweet through X’s page updates. You can also press `l` or `n` immediately to act on the first visible post. After manually scrolling past the selection, the next shortcut starts from your visible feed. `l` also advances past already-liked posts; at the last loaded post it stays put. `n` advances as soon as the native feedback action is clicked, and skips with “Skipped — feedback unavailable.” when X does not offer it. Skipping sends no feedback and does not hide the post.
 
-Shortcuts work in **For You**, stay inactive while typing or using a dialog/menu, and leave modifier shortcuts alone. Holding a key does not repeat actions. wheel takes precedence over X’s native shortcuts for these four keys in this context.
+Connected conversations are one navigation item: the green box spans their context posts and reply, and navigation starts at the top of the conversation. Likes and Not interested target the last displayed reply, rather than its context author. Grouping uses X’s shared feed cell or visible connecting line between avatars; mentions alone never join posts.
+
+`u` uses X’s native Undo for the most recent dismissal made with `n` and selects the restored post. It does not undo likes or maintain an undo history. If the native Undo control is no longer available, wheel shows a short notice. While `n` is still waiting to send feedback, `u` cancels that pending action.
+
+Shortcuts work in **For You**, stay inactive while typing or using a dialog/menu, and leave modifier shortcuts alone. Holding a key does not repeat actions. wheel takes precedence over X’s native shortcuts for these five keys in this context.
 
 ## What to expect
 
 - Works with X’s **English** web interface on `x.com` and `twitter.com`.
 - Shortcuts work only in the **For You** feed, including newly loaded posts as you scroll.
 - No extra buttons are added to posts.
-- If X doesn’t offer the exact feedback action, wheel leaves the post alone and shows a short notice. It never substitutes mute, block, report, or ad feedback.
+- If X doesn’t offer the exact feedback action, wheel leaves the post unchanged, advances selection, and shows a short notice. It never substitutes mute, block, report, or ad feedback.
 - A native menu may briefly appear while the action runs. Any follow-up prompt stays under your control.
-- Navigating away, pressing a key, or clicking elsewhere cancels an action that is still waiting for a menu.
+- Navigating away, pressing a key, clicking elsewhere, scrolling, or touching the page cancels feedback that has not yet been dispatched. Cancelled feedback does not advance selection or pull the page back. Wheel closes its own abandoned menu when it can still identify it; a later menu you open stays under your control.
 - X controls recommendation changes. wheel cannot promise how much or how quickly your feed changes.
 
 This first version is for the desktop web app; it does not modify X’s native phone app. X can change its page structure or wording and break the shortcut.

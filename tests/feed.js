@@ -9,6 +9,10 @@ window.addEventListener(
   true,
 );
 window.feedback = [];
+window.openedMenus = [];
+window.addEventListener("keyup", (event) => {
+  if (event.key === "Escape") document.querySelector("[role=menu]")?.remove();
+});
 window.otherActions = [];
 window.menuDelay = 0;
 window.itemDelay = 0;
@@ -23,10 +27,11 @@ window.addPost = ({
   text = "A thought worth sharing. Small tools can make everyday things feel a little easier.",
   name = "Alex",
   handle = "alex",
+  options,
 }) => {
   const post = document.createElement("article");
   post.dataset.testid = "tweet";
-  post.innerHTML = `<div class="avatar">${name[0]}</div><div class="post-body"><div class="header"><div data-testid="User-Name"><strong>${name}</strong><br><span class="handle">@${handle} · </span><a href="/${handle}/status/${id}"><time>2h</time></a></div><div class="caret-wrap"><button data-testid="caret" aria-label="More">···</button></div></div><p class="post-text">${text}</p><div class="actions"><button data-testid="like" aria-label="Like">♡ 24</button><span>↻ 3</span><span>▥ 842</span><span>↗</span></div></div>`;
+  post.innerHTML = `<div class="avatar" data-testid="Tweet-User-Avatar">${name[0]}</div><div class="post-body"><div class="header"><div data-testid="User-Name"><strong>${name}</strong><br><span class="handle">@${handle} · </span><a href="/${handle}/status/${id}"><time>2h</time></a></div><div class="caret-wrap"><button data-testid="caret" aria-label="More">···</button></div></div><p class="post-text">${text}</p><div class="actions"><button data-testid="like" aria-label="Like">♡ 24</button><span>↻ 3</span><span>▥ 842</span><span>↗</span></div></div>`;
   post.querySelector("[data-testid=like]").onclick = (event) => {
     const button = event.currentTarget;
     if (button.dataset.testid === "like") {
@@ -40,13 +45,14 @@ window.addPost = ({
   };
   post.querySelector("[data-testid=caret]").onclick = () =>
     setTimeout(() => {
+      window.openedMenus.push(id);
       document.querySelector("[role=menu]")?.remove();
       const menu = document.createElement("div");
       menu.setAttribute("role", "menu");
       document.body.append(menu);
       setTimeout(
         () =>
-          window.options.forEach((label) => {
+          (options || window.options).forEach((label) => {
             const item = document.createElement("button");
             item.setAttribute("role", "menuitem");
             item.textContent = label;
