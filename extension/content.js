@@ -5,6 +5,8 @@
 
   const POST = 'article[data-testid="tweet"]';
   const MENU = '[role="menu"]';
+  const VIEWPORT_TOP = 100;
+  const VIEWPORT_BOTTOM = 32;
   // Bound automatic alignment to a short navigation transition.
   const SETTLE_WINDOW = 1500;
   const SETTLE_CORRECTIONS = 3;
@@ -120,8 +122,8 @@
 
   function inViewport(item) {
     return (
-      item.target.getBoundingClientRect().bottom > 100 &&
-      item.head.getBoundingClientRect().top < innerHeight - 32
+      item.target.getBoundingClientRect().bottom > VIEWPORT_TOP &&
+      item.head.getBoundingClientRect().top < innerHeight - VIEWPORT_BOTTOM
     );
   }
 
@@ -319,6 +321,25 @@
     return items.find(inViewport);
   }
 
+  function navigate({ items, direction }) {
+    const current = currentItem(items);
+    const next =
+      current &&
+      (selection?.key === current.key
+        ? items[items.indexOf(current) + direction]
+        : current);
+    if (next) {
+      selectItem({ item: next });
+      return;
+    }
+    stopSettling();
+    window.scrollBy({
+      top:
+        direction * Math.max(1, innerHeight - VIEWPORT_TOP - VIEWPORT_BOTTOM),
+      behavior: "instant",
+    });
+  }
+
   function typing(event) {
     return event
       .composedPath()
@@ -433,20 +454,12 @@
     cancelFeedback({ allowLate: true });
 
     const items = readFeed();
-    const current = currentItem(items);
-    if (!current) return;
     if (key === "j" || key === "k") {
-      const anchored = selection?.key === current.key;
-      const index = items.indexOf(current);
-      const nextIndex = anchored
-        ? Math.max(
-            0,
-            Math.min(items.length - 1, index + (key === "k" ? 1 : -1)),
-          )
-        : index;
-      selectItem({ item: items[nextIndex] });
+      navigate({ items, direction: key === "k" ? 1 : -1 });
       return;
     }
+    const current = currentItem(items);
+    if (!current) return;
     selectItem({ item: current, scroll: false });
     if (key === "l") {
       const nextKey = items[items.indexOf(current) + 1]?.key;
