@@ -138,3 +138,35 @@ test("navigation: later posts do not cause deferred selection or scrolling", asy
     "/alex/status/104",
   );
 });
+
+test("navigation: nested clipping does not expose a shifted rendering frame", async ({
+  page,
+}) => {
+  await openFeed({ page });
+  // Keep the fixture's overflow:hidden ancestor: its scroll container prevents
+  // root snapping from masking a correction that runs one frame too late.
+  await page.addStyleTag({
+    content:
+      "body{padding-bottom:1200px} article{min-height:300px} article:nth-child(2){min-height:1100px}",
+  });
+  await page.keyboard.press("k");
+  await page.keyboard.press("k");
+  const tops = await page.evaluate(async () => {
+    requestAnimationFrame(() => {
+      document.querySelector("#feed").style.transform = "translateY(-180px)";
+    });
+    const samples = [];
+    for (let frame = 0; frame < 5; frame += 1) {
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => setTimeout(resolve, 0)),
+      );
+      samples.push(
+        Math.round(
+          document.querySelector(".wheel-selected").getBoundingClientRect().top,
+        ),
+      );
+    }
+    return samples;
+  });
+  expect(tops).toEqual([100, 100, 100, 100, 100]);
+});
