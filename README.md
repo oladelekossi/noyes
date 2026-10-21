@@ -2,23 +2,20 @@
 
 Fine-tune your X feed from the keyboard.
 
-For agents working on this repository, read [AGENTS.md](AGENTS.md).
+Move through **For You**, like posts, and send **Not interested** feedback. A green outline marks the selected post or connected conversation. X handles dismissal, confirmation, follow-up questions, and Undo.
 
-wheel lets you move through your **For You** feed and send likes or **Not interested** feedback from the keyboard. A green outline marks the selected post or connected conversation. X handles dismissal, confirmation, any follow-up questions, and Undo.
-
-No settings, accounts, API keys, or build step. No automatic feed browsing.
+No settings, accounts, API keys, build step, or automatic feed browsing. Contributors: see [AGENTS.md](AGENTS.md).
 
 ## Install locally
 
 For Chrome and Chromium-based browsers:
 
 1. Download or clone this repository.
-2. Open your browser’s extensions page (`chrome://extensions` in Chrome).
-3. Enable **Developer mode**.
-4. Choose **Load unpacked** and select the **extension** folder inside this repository.
-5. Refresh X, open **For You**, and press `k` to select a post.
+2. Open `chrome://extensions` and enable **Developer mode**.
+3. Choose **Load unpacked** and select the repository's **extension** folder.
+4. Refresh X, open **For You**, and press `k` to select a post.
 
-After changing the extension files, click **Reload** on wheel’s extension card and refresh X.
+After changing extension files, click **Reload** on wheel's extension card and refresh each X tab where you use it.
 
 ## Keyboard shortcuts
 
@@ -30,31 +27,28 @@ After changing the extension files, click **Reload** on wheel’s extension card
 | `n` | Not interested, or skip when feedback is unavailable |
 | `u` | Undo the latest `n` dismissal while X still offers Undo |
 
-The first navigation key selects the first visible post. A green box outlines the selected post; navigation shows its top below the feed header, and puts it back there if X shifts the feed in the moment after you navigate. The green box follows the same tweet through X’s page updates. You can also press `l` or `n` immediately to act on the first visible post. After manually scrolling past the selection, the next shortcut starts from your visible feed. `l` also advances past already-liked posts; at the last loaded post it stays put. `n` advances as soon as the native feedback action is clicked, and skips with “Skipped — feedback unavailable.” when X does not offer it. Skipping sends no feedback and does not hide the post.
+The first navigation key selects the first visible post. Navigation puts its top below the feed header and briefly corrects feed shifts. If an ad or gap fills the viewport, or there is no loaded neighboring post, each `j`/`k` press scrolls one screen in that direction so you can reach more posts. Loading alone never triggers another scroll. After you manually scroll past the selection, the next shortcut starts from the visible feed. `l` and `n` act only on a visible post; `l` advances past already-liked posts and stays put at the last loaded post.
 
-Connected conversations are one navigation item: the green box spans their context posts and reply, and navigation starts at the top of the conversation. Likes and Not interested target the last displayed reply, rather than its context author. Grouping uses X’s shared feed cell or visible connecting line between avatars; mentions alone never join posts.
+Connected conversations form one navigation item. Their green outline spans the context and reply; likes and feedback target the last displayed reply. Grouping uses a shared feed cell or visible avatar connector, never mentions alone.
 
-`u` uses X’s native Undo for the most recent dismissal made with `n` and selects the restored post. It does not undo likes or maintain an undo history. If the native Undo control is no longer available, wheel shows a short notice. While `n` is still waiting to send feedback, `u` cancels that pending action.
+`n` advances when it clicks X's native feedback action. If that action is missing, it skips with a notice and leaves the post unchanged. `u` selects the restored post after using X's native Undo. It has no undo history, does not undo likes, and shows a notice when Undo is unavailable. During a pending `n`, `u` cancels that action instead.
 
-Shortcuts work in **For You**, stay inactive while typing or using a dialog/menu, and leave modifier shortcuts alone. Holding a key does not repeat actions. wheel takes precedence over X’s native shortcuts for these five keys in this context.
+## Limits and cancellation
 
-## What to expect
-
-- Works with X’s **English** web interface on `x.com` and `twitter.com`.
-- Shortcuts work only in the **For You** feed, including newly loaded posts as you scroll.
-- No extra buttons are added to posts.
-- If X doesn’t offer the exact feedback action, wheel leaves the post unchanged, advances selection, and shows a short notice. It never substitutes mute, block, report, or ad feedback.
-- A native menu may briefly appear while the action runs. Any follow-up prompt stays under your control.
-- Navigating away, pressing a key, clicking elsewhere, scrolling, or touching the page cancels feedback that has not yet been dispatched. Cancelled feedback does not advance selection or pull the page back. Wheel closes its own abandoned menu when it can still identify it; a later menu you open stays under your control.
-- X controls recommendation changes. wheel cannot promise how much or how quickly your feed changes.
-
-This first version is for the desktop web app; it does not modify X’s native phone app. X can change its page structure or wording and break the shortcut.
+- Supports X's **English desktop web interface** on `x.com` and `twitter.com`, only in **For You**. It does not modify the native phone app.
+- Shortcuts stay inactive while typing or using a dialog/menu. Modifiers and held-key repeats do not trigger actions. wheel takes precedence over X's native shortcuts for these five keys in this context.
+- No extra post buttons are added. A native menu may briefly appear during feedback; follow-up prompts stay under your control.
+- Navigation, key presses, clicks elsewhere, scrolling, and touch cancel feedback that has not been dispatched. Cancellation does not advance selection or pull you back. wheel closes its own abandoned menu when it can identify it and preserves menus you open yourself.
+- wheel never substitutes mute, block, report, or ad feedback for Not interested.
+- X controls recommendation changes and can change its page structure or wording. wheel cannot guarantee compatibility or how much your recommendations change.
 
 ## Privacy
 
-wheel runs only on X/Twitter pages. It reads the displayed post header and menu to carry out the click you requested. It has no analytics, storage, backend, external requests, or third-party runtime dependencies. Feedback is sent through X’s own interface.
+wheel runs only on X/Twitter pages and reads the displayed DOM to carry out your requested action. It has no analytics, storage, backend, external requests, or third-party runtime dependencies. Feedback uses X's own interface.
 
 ## Development
+
+Requires Git, Node.js 20+, npm, and `zip`.
 
 ```sh
 npm ci
@@ -65,24 +59,21 @@ npm test
 npm run package
 ```
 
-The installable extension is the `extension/` directory. Packaging writes `dist/wheel-0.2.0.zip`, containing only the extension files. Extract it before using Load unpacked.
+Packaging writes `dist/wheel-<version>.zip` using the manifest version and only the files in `extension/`. Extract the ZIP before using Load unpacked.
 
-The tests use a simulated X feed to exercise post targeting, native Undo, missing menu actions, tab changes, delayed menus, cancellation, recycled posts, keyboard navigation and actions, typing protection, native shortcut conflicts, and light/dark appearance. An additional test loads the real extension in an isolated Chromium profile and verifies automatic injection. No tests submit feedback on a real X account.
+Browser tests cover navigation, actions, Undo, cancellation, recycled posts, typing protection, and appearance on a synthetic feed. An isolated Chromium test verifies extension injection. No tests submit feedback on a real X account.
 
-To use a separately installed Chromium or Chrome for Testing binary for the extension-loading test, set `WHEEL_CHROMIUM_EXECUTABLE` to its executable path. Regular Chrome releases may not permit command-line extension loading.
+Set `WHEEL_CHROMIUM_EXECUTABLE` to a Chromium or Chrome for Testing executable for the extension-loading test if needed. Regular Chrome releases may not permit command-line extension loading.
 
-Installation, keyboard selection, the green outline, and removal of the extra buttons were verified on a signed-in X account. Live like/feedback dispatch and automatic advancement still need live verification.
+Live installation and sampled navigation have been verified. Live like/feedback dispatch and automatic advancement remain unverified; see [architecture and evidence limits](docs/architecture.md#verification-limits).
 
 ## Code quality with vet
 
-`npm run check` runs [vet](https://github.com/gdevillele/vet). It checks every tracked or unignored JavaScript file (`.js`, `.mjs`, `.cjs`), including tests and tooling, plus GitHub workflows. Generated output and dependencies are ignored by Git. It enforces:
+`npm run check` runs [vet](https://github.com/gdevillele/vet) on tracked or unignored JavaScript and GitHub workflows. It enforces one function parameter (use a named options object), Prettier formatting, and full commit SHA pins for external Actions. Generated output and dependencies are ignored by Git.
 
-- At most one function parameter; related arguments use a named options object.
-- Prettier formatting.
-- Full commit SHA pins for external GitHub Actions.
+- `npm run format`: fix formatting.
+- `npm run vet:all`: all diagnostics as JSON.
+- `npm run vet -- extension/content.js`: check one file.
+- `npm run test:vet`: test the adapter's handling of violations, syntax errors, unpinned Actions, and empty input.
 
-Use `npm run format` to fix formatting, `npm run vet:all` for all diagnostics as JSON, or `npm run vet -- extension/content.js` to inspect a file. The same check runs in GitHub Actions. `npm run test:vet` verifies that the integration rejects real JavaScript violations, invalid syntax, unpinned actions, and empty input.
-
-The pinned upstream runner discovers only TypeScript files. `scripts/vet.mjs` selects wheel's JavaScript and calls the upstream analyzer and workflow checker directly. It also runs Node's syntax check so invalid JavaScript cannot silently pass. The browser extension stays plain JavaScript with no build step. The test feed's script lives in `tests/feed.js` so it is checked too; HTML, CSS, and JSON are outside vet's JavaScript analysis.
-
-See [vendor/README.md](vendor/README.md) for the exact upstream revision, license, archive checksum, and rebuild instructions. Rules beyond those listed above retain upstream defaults.
+The adapter selects JavaScript files because upstream discovery only finds TypeScript, and runs Node syntax checks before analysis. HTML, CSS, and JSON are outside vet's JavaScript analysis. See [vendor/README.md](vendor/README.md) for the pinned revision, license, checksum, and rebuild instructions; [vet.yaml](vet.yaml) defines enabled rules.

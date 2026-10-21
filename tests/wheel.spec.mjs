@@ -13,6 +13,29 @@ async function start(page) {
   await page.addScriptTag({ path: script });
   await expect(page.locator(".wheel-button")).toHaveCount(0);
 }
+function wrapInFeedCells(posts) {
+  for (const post of posts) {
+    const cell = document.createElement("div");
+    cell.dataset.testid = "cellInnerDiv";
+    post.before(cell);
+    cell.append(post);
+  }
+}
+
+function restoreSameArticleOnUndo(post) {
+  const children = [...post.childNodes];
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (!event.target.matches(".undo")) return;
+      event.stopImmediatePropagation();
+      window.feedback = [];
+      post.replaceChildren(...children);
+    },
+    true,
+  );
+}
+
 test.beforeEach(async ({ page }) => start(page));
 
 test("n sends native feedback for exactly the chosen post and keeps Undo", async ({
@@ -828,15 +851,10 @@ test("conversation without feedback skips once and closes its native menu", asyn
 test("avatar rails join adjacent cells but unrelated mentions stay separate", async ({
   page,
 }) => {
+  await page.locator("article").evaluateAll(wrapInFeedCells);
   await page.evaluate(() => {
     const posts = [...document.querySelectorAll("article")];
-    for (const post of posts) {
-      const cell = document.createElement("div");
-      cell.dataset.testid = "cellInnerDiv";
-      post.before(cell);
-      cell.append(post);
-      post.style.position = "relative";
-    }
+    for (const post of posts) post.style.position = "relative";
     const line = document.createElement("div");
     line.style.cssText =
       "position:absolute;left:41px;top:64px;bottom:0;width:2px;background:gray";
@@ -936,20 +954,7 @@ test("regression: navigation cancellation closes a late feedback menu", async ({
 test("regression: Undo restores keyboard access to the same article", async ({
   page,
 }) => {
-  await page.evaluate(() => {
-    const post = document.querySelector("article");
-    const children = [...post.childNodes];
-    document.addEventListener(
-      "click",
-      (event) => {
-        if (!event.target.matches(".undo")) return;
-        event.stopImmediatePropagation();
-        window.feedback = [];
-        post.replaceChildren(...children);
-      },
-      true,
-    );
-  });
+  await page.locator("article").first().evaluate(restoreSameArticleOnUndo);
   await page.keyboard.press("n");
   await expect
     .poll(() => page.evaluate(() => window.feedback))
@@ -1008,15 +1013,10 @@ for (const hiddenStyle of ["visibility:hidden", "opacity:0"]) {
   test(`regression: avatar rails with ${hiddenStyle} cannot redirect a like`, async ({
     page,
   }) => {
+    await page.locator("article").evaluateAll(wrapInFeedCells);
     await page.evaluate((hiddenStyle) => {
       const posts = [...document.querySelectorAll("article")];
-      for (const post of posts) {
-        const cell = document.createElement("div");
-        cell.dataset.testid = "cellInnerDiv";
-        post.before(cell);
-        cell.append(post);
-        post.style.position = "relative";
-      }
+      for (const post of posts) post.style.position = "relative";
       const line = document.createElement("div");
       line.style.cssText = `position:absolute;left:41px;top:64px;bottom:0;width:2px;background:gray;${hiddenStyle}`;
       posts[0].append(line);
@@ -1051,19 +1051,8 @@ test("regression: Undo after the final dismissal restores selection", async ({
   await page.evaluate(() => {
     const posts = [...document.querySelectorAll("article")];
     posts.slice(1).forEach((post) => post.remove());
-    const post = posts[0];
-    const children = [...post.childNodes];
-    document.addEventListener(
-      "click",
-      (event) => {
-        if (!event.target.matches(".undo")) return;
-        event.stopImmediatePropagation();
-        window.feedback = [];
-        post.replaceChildren(...children);
-      },
-      true,
-    );
   });
+  await page.locator("article").first().evaluate(restoreSameArticleOnUndo);
   await page.keyboard.press("n");
   await expect
     .poll(() => page.evaluate(() => window.feedback))
@@ -1240,13 +1229,11 @@ for (const layout of ["same article", "replacement in cell"]) {
   test(`undo shortcut: restores ${layout} through native control`, async ({
     page,
   }) => {
+    await page.locator("article").first().evaluateAll(wrapInFeedCells);
     await page.evaluate((layout) => {
       const post = document.querySelector("article");
       const children = [...post.childNodes];
-      const cell = document.createElement("div");
-      cell.dataset.testid = "cellInnerDiv";
-      post.before(cell);
-      cell.append(post);
+      const cell = post.closest('[data-testid="cellInnerDiv"]');
       document.addEventListener(
         "click",
         (event) => {
@@ -1293,13 +1280,7 @@ for (const obstruction of [
   "recycled",
 ]) {
   test(`undo shortcut: refuses ${obstruction} controls`, async ({ page }) => {
-    await page.evaluate(() => {
-      const post = document.querySelector("article");
-      const cell = document.createElement("div");
-      cell.dataset.testid = "cellInnerDiv";
-      post.before(cell);
-      cell.append(post);
-    });
+    await page.locator("article").first().evaluateAll(wrapInFeedCells);
     await page.keyboard.press("n");
     await expect
       .poll(() => page.evaluate(() => window.feedback))
