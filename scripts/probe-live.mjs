@@ -164,7 +164,12 @@ async function scan({ page }) {
   return best;
 }
 
-// One verdict per inventory row in docs/resilience-plan.md §2.1.
+// One verdict per X assumption. Row numbers are the probe's stable output keys:
+//  1 post selector        2 feed cells          3 primary column      4 For You tab
+//  5 status-ID link       6 ad markers          7 avatar              8 thread connector (rail)
+//  9 like control        10 post caret         11 menu              12 "Not interested" label
+// 13 Undo control        14 Undo scope         15 no overlay at rest 16 header height
+// Rows 11-14 need a menu open or a dismissal, so the read-only probe does not test them.
 function rows({ found, headerHeight }) {
   const h = found.health;
   const unseen = "not observed";

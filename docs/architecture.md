@@ -1,6 +1,6 @@
 # How noyes works
 
-noyes is a Manifest V3 content script and CSS that turns keyboard input into native X actions. [README.md](../README.md#keyboard-shortcuts) defines supported behavior and shortcuts.
+noyes is a Manifest V3 content script and CSS that turns keyboard input into native X actions. [README.md](../README.md#how-it-works) defines supported behavior and shortcuts.
 
 ## Layout and loading
 
@@ -71,7 +71,18 @@ Typing, composition, modifiers, held-key repeats, and ordinary menus/dialogs blo
 
 ## When X changes
 
-If posts stop being recognizable (articles in the column, but no post matches or none has an ID, on two checks a second apart), noyes shows one notice per page load and its shortcuts find nothing to act on. `l` on a post with neither a like nor an unlike control shows `Like control not found.` once. Other breakages fail closed with the existing notices; see the degradation matrix in [resilience-plan.md](resilience-plan.md#34-degradation-matrix).
+If posts stop being recognizable (articles in the column, but no post matches or none has an ID, on two checks a second apart), noyes shows one notice per page load and its shortcuts find nothing to act on. `l` on a post with neither a like nor an unlike control shows `Like control not found.` once. Other breakages fail closed: noyes does nothing and shows a notice, and never acts on a different element than the one it meant to.
+
+| What X changed | Effect | User sees |
+| --- | --- | --- |
+| Post selector or status-ID link | All shortcuts off | Drift notice |
+| Primary column or For You tab | All shortcuts off (noyes believes it is not on For You) | Nothing; the probe catches it |
+| Ad markers | Ads become navigable; `n` opens whatever menu they have | Nothing. Exact menu labels keep the click closed, but the menu flashes. Accepted: no safe fallback exists |
+| Thread connector | Conversations split into separate items | Nothing visible; the probe reports it |
+| Like control | `l` closed | Drift notice when the control is missing; silent when the post is already liked |
+| Caret, menu, or menu label | `n` closed (after the 1,600 ms timeout for menu/label) | `Skipped — feedback unavailable.` |
+| Undo control | `u` closed | `Undo unavailable.` |
+| Header height | Alignment lands slightly off | Visual only; one constant in `x.js` |
 
 To fix drift:
 

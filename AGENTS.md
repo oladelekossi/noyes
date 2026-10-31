@@ -5,8 +5,7 @@ noyes is a plain JavaScript browser extension for keyboard feedback on X's Engli
 ## References
 
 - [README.md](README.md): supported behavior, installation, development setup, and checks.
-- [docs/architecture.md](docs/architecture.md): read before changing selection, shortcuts, native feedback, or packaging.
-- [docs/resilience-plan.md](docs/resilience-plan.md): the completed plan behind the layered modules, with the inventory of X assumptions and the degradation matrix; read before changing how noyes finds anything on X's page.
+- [docs/architecture.md](docs/architecture.md): module layout, the X adapter, selection and feedback behavior, what breaks when X changes. Read before changing selection, shortcuts, native feedback, packaging, or anything that finds elements on X's page.
 - [vendor/README.md](vendor/README.md): pinned vet dependency provenance and rebuild instructions.
 - [package.json](package.json), [vet.yaml](vet.yaml), and [.github/workflows/test.yml](.github/workflows/test.yml): executable checks, rules, and CI setup.
 

@@ -2,7 +2,7 @@
   <img src="docs/logo.png" alt="noyes" width="640">
 </p>
 
-<p align="center"><b>tl;dr — train your X feed from your keyboard</b></p>
+<p align="center"><b>Fine-tune your X feed from your keyboard.</b></p>
 
 ## Why I built this
 
@@ -48,10 +48,10 @@ Every action goes through X's own UI, as if you clicked it yourself.
 1. Right now this only works on English and desktop.
 2. X changes its page all the time, so this might break. If it does, I built a little recorder for debugging — `npm run debug:build`
 
-## A few other things my agent says I should put in here
+## Development
 
 - Linting is done with [vet](https://github.com/gdevillele/vet), pinned in `vendor/`. Rules are in `vet.yaml`.
-- More detail in [docs/architecture.md](docs/architecture.md) and [docs/resilience-plan.md](docs/resilience-plan.md). If you're using a coding agent, point it at [AGENTS.md](AGENTS.md).
+- How it works under the hood: [docs/architecture.md](docs/architecture.md). If you're using a coding agent, point it at [AGENTS.md](AGENTS.md).
 
 To run everything:
 
