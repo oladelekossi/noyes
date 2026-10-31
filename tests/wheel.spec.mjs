@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { fixture } from "./fixture.mjs";
 import { resolve } from "node:path";
+const adapter = resolve("extension/x.js");
 const script = resolve("extension/content.js");
 const css = resolve("extension/content.css");
 
@@ -10,6 +11,7 @@ async function start(page) {
   );
   await page.goto("https://x.com/home");
   await page.addStyleTag({ path: css });
+  await page.addScriptTag({ path: adapter });
   await page.addScriptTag({ path: script });
   await expect(page.locator(".wheel-button")).toHaveCount(0);
 }
@@ -75,6 +77,7 @@ test("selection clears outside For You and shortcuts leave other pages alone", a
 test("repeat injection does not duplicate shortcut handlers", async ({
   page,
 }) => {
+  await page.addScriptTag({ path: adapter });
   await page.addScriptTag({ path: script });
   await page.keyboard.press("l");
   expect(await page.evaluate(() => window.likes)).toEqual(["101"]);

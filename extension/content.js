@@ -3,23 +3,16 @@
   if (globalThis.__wheelLoaded) return;
   globalThis.__wheelLoaded = true;
 
-  const POST = 'article[data-testid="tweet"]';
-  const CELL = '[data-testid="cellInnerDiv"]';
-  const MENU = '[role="menu"]';
+  const x = globalThis.__wheel.x;
   const SHORTCUTS = ["j", "k", "l", "n", "u"];
-  const FEEDBACK_LABELS = [
-    "not interested in this post",
-    "not interested in this tweet",
-  ];
   const SKIP_NOTICE = "Skipped — feedback unavailable.";
-  const VIEWPORT_TOP = 100;
-  const VIEWPORT_BOTTOM = 32;
+  const VIEWPORT_TOP = x.layout.headerHeight;
+  const VIEWPORT_BOTTOM = x.layout.bottomMargin;
   // Bound automatic alignment to a short navigation transition.
   const SETTLE_WINDOW = 1500;
   const SETTLE_CORRECTIONS = 3;
-  // Poll only during a user-requested action, without automatic retry.
-  const MENU_TIMEOUT = 1600;
-  const POLL_INTERVAL = 40;
+  const MENU_TIMEOUT = x.timing.menuTimeout;
+  const POLL_INTERVAL = x.timing.pollInterval;
   const CANCELLED = new Error("cancelled");
 
   const dismissedPosts = new Map();
@@ -34,72 +27,14 @@
 
   // --- DOM helpers ---------------------------------------------------------
 
-  const normalize = (text) => text.replace(/\s+/g, " ").trim().toLowerCase();
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const unmodified = (event) =>
     !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
-  const visible = (element) =>
-    element.isConnected &&
-    element.getClientRects().length > 0 &&
-    getComputedStyle(element).visibility !== "hidden";
-  const enabled = (element) =>
-    !element.disabled && element.getAttribute("aria-disabled") !== "true";
-  const faded = (element) => {
-    for (let node = element; node; node = node.parentElement) {
-      if (Number(getComputedStyle(node).opacity) === 0) return true;
-    }
-    return false;
-  };
-  // Match inside a post but not inside a nested (quoted) post.
-  const own = ({ post, selector }) =>
-    [...post.querySelectorAll(selector)].find(
-      (element) => element.closest(POST) === post,
-    );
-  const hrefId = (anchor) =>
-    anchor?.getAttribute("href")?.match(/\/status\/(\d+)/)?.[1];
-  const postKey = (post) =>
-    hrefId(own({ post, selector: "time" })?.closest("a[href]"));
-  const primaryColumn = () =>
-    document.querySelector('[data-testid="primaryColumn"]');
-  const isAd = (post) =>
-    post.closest('[data-testid="placementTracking"]') ||
-    post.querySelector(
-      '[data-testid="placementTracking"], [data-testid="promotedIndicator"]',
-    );
+  const visible = x.visible;
+  const postKey = (post) => x.postId({ post });
   const byKey = (key) => (item) => item.key === key;
-
-  function onForYou() {
-    if (location.pathname.replace(/\/$/, "") !== "/home") return false;
-    const primary = primaryColumn();
-    return (
-      !!primary &&
-      [...primary.querySelectorAll('[role="tab"][aria-selected="true"]')].some(
-        (tab) => visible(tab) && normalize(tab.textContent) === "for you",
-      )
-    );
-  }
-
-  function typing(event) {
-    return event
-      .composedPath()
-      .concat(document.activeElement)
-      .some(
-        (element) =>
-          element instanceof Element &&
-          (element.isContentEditable ||
-            element.closest(
-              'input, textarea, select, [role="textbox"], [role="searchbox"], [role="combobox"]',
-            )),
-      );
-  }
-
-  function overlayOpen() {
-    return [
-      ...document.querySelectorAll(
-        '[role="menu"], [role="dialog"], [aria-modal="true"]',
-      ),
-    ].some(visible);
-  }
+  const onForYou = x.onForYou;
+  const overlayOpen = x.overlayOpen;
 
   function notify(message) {
     let notice = document.querySelector(".wheel-notice");
@@ -117,71 +52,23 @@
 
   // --- Feed model ----------------------------------------------------------
 
-  // A thin, painted, vertical line under the avatar that reaches the post's
-  // bottom edge is X's conversation connector.
-  function isAvatarRail({ line, avatarRect, postRect }) {
-    const rail = line.getBoundingClientRect();
-    const centered =
-      Math.abs(
-        rail.left + rail.width / 2 - (avatarRect.left + avatarRect.width / 2),
-      ) < 4;
-    if (
-      rail.width < 1 ||
-      rail.width > 3 ||
-      rail.height <= 8 ||
-      !centered ||
-      rail.top < avatarRect.bottom - 4 ||
-      Math.abs(rail.bottom - postRect.bottom) > 4
-    )
-      return false;
-    const background = getComputedStyle(line).backgroundColor;
-    return (
-      visible(line) &&
-      background !== "transparent" &&
-      background !== "rgba(0, 0, 0, 0)" &&
-      !faded(line)
-    );
-  }
-
-  // Separate virtualized cells are joined only by X's visible avatar rail.
-  // Mentions, authors, and nearby timestamps are not conversation evidence.
-  function continuesConversation({ post, next }) {
-    const cell = post.closest(CELL);
-    const nextCell = next.closest(CELL);
-    if (cell && cell === nextCell) return true;
-    if (!cell || cell.nextElementSibling !== nextCell) return false;
-    const avatar = own({ post, selector: '[data-testid="Tweet-User-Avatar"]' });
-    if (!avatar) return false;
-    const rect = post.getBoundingClientRect();
-    if (Math.abs(next.getBoundingClientRect().top - rect.bottom) > 4)
-      return false;
-    const avatarRect = avatar.getBoundingClientRect();
-    return [...post.querySelectorAll("div")].some(
-      (line) =>
-        !line.childElementCount &&
-        line.closest(POST) === post &&
-        isAvatarRail({ line, avatarRect, postRect: rect }),
-    );
-  }
-
   function readFeed() {
-    const primary = primaryColumn();
+    const primary = x.column();
     if (!primary) return [];
     const items = [];
     let previous = null;
-    for (const post of primary.querySelectorAll(POST)) {
-      if (post.parentElement.closest(POST)) continue;
+    for (const post of x.posts({ root: primary })) {
       const key = postKey(post);
       if (
         !visible(post) ||
         !key ||
         dismissedPosts.get(post)?.key === key ||
-        isAd(post)
+        x.isAd({ post })
       ) {
         previous = null;
         continue;
       }
-      if (previous && continuesConversation({ post: previous, next: post })) {
+      if (previous && x.isConversationRail({ post: previous, next: post })) {
         const item = items.at(-1);
         item.articles.push(post);
         item.target = post;
@@ -205,13 +92,6 @@
     return items.find(inViewport);
   }
 
-  const timesIn = (node) =>
-    node instanceof Element
-      ? node.matches("time")
-        ? [node]
-        : [...node.querySelectorAll("time")]
-      : [];
-
   // An atomic same-ID replacement is a rerender, not an Undo. Follow its
   // timestamp through the mutation batch; a removal without replacement is
   // the native result transition, even if Undo restores it in the same batch.
@@ -231,12 +111,10 @@
         );
         if (!removed) continue;
         const replacement = [...record.addedNodes]
-          .flatMap(timesIn)
+          .flatMap((node) => x.timestamps({ node }))
           .find(
             (time) =>
-              hrefId(
-                time.closest("a[href]") || record.target.closest?.("a[href]"),
-              ) === dismissed.key,
+              x.timestampId({ time, target: record.target }) === dismissed.key,
           );
         if (!replacement) {
           dismissedPosts.delete(post);
@@ -417,40 +295,16 @@
 
   function likePost(post) {
     const key = postKey(post);
-    const like = own({ post, selector: '[data-testid="like"]' });
-    // "l" means like, not toggle. Never activate the native unlike control.
-    if (!key || !like || !visible(like) || !enabled(like)) return;
+    const like = x.likeControl({ post });
+    if (!key || !like) return;
     if (pendingLikes.has(key)) return;
     pendingLikes.add(key);
     like.click();
     setTimeout(() => pendingLikes.delete(key), 1500);
   }
 
-  // Native Undo controls inside the dismissed post's cell, excluding recycled
-  // posts, unrelated or quoted controls, and anything hidden or disabled.
-  function undoControls({ post, scope }) {
-    if (!scope?.isConnected) return [];
-    const stillShowing = post.isConnected
-      ? !!postKey(post)
-      : [...scope.querySelectorAll(POST)].some(postKey);
-    if (stillShowing) return [];
-    return [...scope.querySelectorAll('button, [role="button"]')].filter(
-      (button) => {
-        const owner = button.closest(POST);
-        return (
-          (!owner || owner === post) &&
-          visible(button) &&
-          enabled(button) &&
-          normalize(button.textContent) === "undo" &&
-          !button.closest('[hidden], [inert], [aria-hidden="true"]') &&
-          !faded(button)
-        );
-      },
-    );
-  }
-
   function undoDismissal() {
-    const candidates = lastDismissal ? undoControls(lastDismissal) : [];
+    const candidates = lastDismissal ? x.undoControls(lastDismissal) : [];
     if (candidates.length !== 1) {
       notify("Undo unavailable.");
       return;
@@ -476,25 +330,12 @@
     }
   }
 
-  function closeMenu(menu) {
-    if (!menu?.isConnected || !visible(menu)) return;
-    for (const type of ["keydown", "keyup"])
-      menu.dispatchEvent(
-        new KeyboardEvent(type, {
-          key: "Escape",
-          code: "Escape",
-          keyCode: 27,
-          which: 27,
-          bubbles: true,
-        }),
-      );
-  }
+  const closeMenu = (menu) => x.closeMenu({ menu });
 
   function cancelFeedback({ allowLate, event }) {
     const operation = pendingFeedback;
     if (!operation) return;
-    const menu = event?.target.closest?.(MENU);
-    if (menu && visible(menu)) {
+    if (x.menuAt({ element: event?.target })) {
       // Input inside a native menu transfers control to the user, including
       // before our polling has captured that menu. Do not interrupt its click.
       operation.menu = null;
@@ -505,23 +346,14 @@
     closeMenu(operation.menu);
   }
 
-  // Exact labels only: never guess from an icon or click the first menu item.
-  const feedbackItem = (menu) =>
-    [...menu.querySelectorAll('[role="menuitem"]')].find(
-      (element) =>
-        visible(element) &&
-        enabled(element) &&
-        FEEDBACK_LABELS.includes(normalize(element.textContent)),
-    );
-
   // Click X's own "Not interested" action for one post. Resolves "sent",
   // "unavailable", or undefined when cancelled or the post changed.
   async function dismiss(post) {
     if (pendingFeedback || !onForYou() || overlayOpen()) return;
     const key = postKey(post);
     if (!key) return;
-    const caret = own({ post, selector: '[data-testid="caret"]' });
-    if (!caret || !visible(caret)) {
+    const caret = x.caret({ post });
+    if (!caret) {
       notify(SKIP_NOTICE);
       return "unavailable";
     }
@@ -529,16 +361,16 @@
     const controller = new AbortController();
     const operation = {
       controller,
-      previousMenus: new Set(document.querySelectorAll(MENU)),
+      previousMenus: new Set(x.menus({ root: document })),
       menu: null,
       allowLate: true,
       deadline: performance.now() + MENU_TIMEOUT,
     };
     pendingFeedback = operation;
     const discoverMenu = () =>
-      [...document.querySelectorAll(MENU)].find(
-        (menu) => !operation.previousMenus.has(menu) && visible(menu),
-      );
+      x
+        .menus({ root: document })
+        .find((menu) => !operation.previousMenus.has(menu) && visible(menu));
     const current = () =>
       post.isConnected && postKey(post) === key && onForYou();
     const assertCurrent = () => {
@@ -567,15 +399,15 @@
         read: () => {
           assertCurrent();
           if (!visible(operation.menu)) throw CANCELLED;
-          return feedbackItem(operation.menu);
+          return x.feedbackItem({ menu: operation.menu });
         },
         signal: controller.signal,
       });
       assertCurrent();
       if (controller.signal.aborted) throw CANCELLED;
-      dismissedPosts.set(post, { key, time: own({ post, selector: "time" }) });
+      dismissedPosts.set(post, { key, time: x.timestamp({ post }) });
       // Capture the native result's container before X can replace the article.
-      const scope = post.closest(CELL) || post;
+      const scope = x.cell({ post }) || post;
       item.click();
       lastDismissal = { key, post, scope };
       outcome = "sent";
@@ -651,7 +483,7 @@
       !unmodified(event) ||
       event.isComposing ||
       event.keyCode === 229 ||
-      typing(event) ||
+      x.typingContext({ event }) ||
       !onForYou()
     )
       return;

@@ -9,6 +9,7 @@ async function openFeed({ page, inject = true }) {
   await page.goto("https://x.com/home");
   if (inject) {
     await page.addStyleTag({ path: resolve("extension/content.css") });
+    await page.addScriptTag({ path: resolve("extension/x.js") });
     await page.addScriptTag({ path: resolve("extension/content.js") });
   }
 }
