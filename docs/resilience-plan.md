@@ -1,8 +1,23 @@
 # Plan: a layered wheel that survives X changes
 
-Status: **plan**. Nothing below is built unless a line says `built`. Written against the working tree on 2026-10-31: `extension/content.js` at 774 lines with uncommitted edits on top of commit `10515f1` (see Phase 0).
+Status: **done** (2026-10-31), except the owner's first live probe run (Phase 6). Built as described below, with the differences listed in "As built". Sections below keep their original `planned` wording as the design record; for current behavior read [architecture.md](architecture.md).
 
-Read this before: splitting `content.js`, changing how wheel finds anything on X's page, adding tests, or deciding what to do after an X layout change. For current behavior read [architecture.md](architecture.md). For required checks read [AGENTS.md](../AGENTS.md).
+## As built
+
+Where this plan and the code differ, the code and its tests are right:
+
+- **Generic DOM predicates live in `x.js`.** `feed.js` needs `visible()`, so `x.visible` is part of the adapter rather than a separate utility file. `x.js` also gained `timestamp`, `timestamps`, `timestampId` (dismissal reconciliation) and `menuAt` (input inside a native menu), which the §3.3 list did not name.
+- **`selection.interrupt()` takes no source** and returns whether alignment was running; the flush happens on every interrupt, as before the split. `selection.navigate()` holds today's `navigate()`; `feed.neighbors` was not needed.
+- **`menuInput` is not a separate source.** `feedback.interrupt({ source, event })` detects input inside a visible native menu from `event`, for any source.
+- **The document-level cancel listener is permanent** (registered by `input.js`, active only while a dismissal is pending) instead of being added per operation. Consumed shortcuts still never reach it.
+- **Drift condition (§3.5)** uses `x.health`: ≥ 3 articles in the column and zero recognized posts or zero post IDs, on two consecutive once-a-second checks. Zero navigation items alone was not used, because a feed of only ads or dismissed posts would trip it.
+- **Layer checker** also catches destructured references (`const { feed } = wheel`), which Rule B's `wheel.<name>` pattern would miss, and Rule A applies to comments too.
+- **Unit command** is `node --test "tests/unit/*.test.mjs"`; `node --test tests/unit/` fails on Node 22. `tests/unit/load.mjs` lets tests override `performance`/`setTimeout` with a manual clock.
+- **`testIgnore` for unit tests** was added in Phase 3, not 5: Playwright's default match already picks up `*.test.mjs`.
+- **Live probe:** rows 11–14 are `not probed` (each needs a click); row 14 cannot be read without a dismissal. Rows 6 and 8 report `not observed` when no ad or adjacent-cell conversation is on screen. Row 16 compares the bottom of the For You tab's sticky header with `x.layout.headerHeight` (±8 px). `--fixture` runs the probe against the synthetic feed to check the probe itself.
+- **README** gained one Limits sentence for the drift notice, and CI runs `npm run test:unit`.
+
+Read this for why wheel is layered the way it is, the inventory of X assumptions (§2.1), and what fails closed when one breaks (§3.4). For how to fix drift, read [architecture.md](architecture.md#when-x-changes); for required checks, [AGENTS.md](../AGENTS.md).
 
 ## 1. Outcome and constraints
 

@@ -4,13 +4,27 @@ wheel is a Manifest V3 content script and CSS that turns keyboard input into nat
 
 ## Layout and loading
 
-- `extension/`: shipped manifest, DOM interaction code, and styles.
-- `tests/`: synthetic feed, browser tests, and extension-loading smoke test.
-- `scripts/`: packaging, vet adapter, and adapter tests.
+- `extension/`: shipped manifest, the content-script modules below, and styles.
+- `tests/`: synthetic feed, browser tests by module, the extension-loading smoke test, and `tests/unit/` for logic tests without a browser.
+- `scripts/`: packaging, the vet adapter, the layer checker, the live probe, and their tests.
 - `vendor/`: pinned development-only vet dependency and provenance.
 - `.github/workflows/`: CI checks and artifacts.
 
-The manifest injects on HTTPS `x.com` and `twitter.com`. Capture-phase keyboard listeners register at `document_start`; DOM observation starts when the document is ready. A per-page guard prevents duplicate initialization. Controls require `/home` and the visible English `For you` tab selected inside `primaryColumn`.
+The manifest injects on HTTPS `x.com` and `twitter.com`. Chrome runs the files in the manifest's `js` array in order, as classic scripts sharing one isolated world; they share state only through one namespace object, `globalThis.__wheel`, and each file is idempotent on re-injection. There is no build step and no `"type": "module"`. Tests inject the same files in manifest order (`tests/helpers.mjs`), so the manifest is the single source of load order.
+
+| File | Owns | Role |
+| --- | --- | --- |
+| `x.js` | nothing | The X adapter: every selector, label, URL shape, layout constant, and timing about X, in one frozen `contract` plus lookups. |
+| `ui.js` | the notice | Notices and the `--wheel-header-height` CSS variable. |
+| `feed.js` | dismissal suppression | Posts → navigation items; viewport tests; mutation reconciliation. |
+| `selection.js` | selection, align/settle | Selected ID, outline painting, alignment, `j`/`k` movement. |
+| `feedback.js` | pending like/dismissal, last dismissal | Like, the dismissal state machine, Undo, and the single `interrupt` entry point. |
+| `input.js` | consumed keys | Raw events → commands and interrupts. |
+| `main.js` | refresh scheduling | Start-up, MutationObserver, repainting, drift detection. |
+
+Dependencies go one way: a file may use only files above it in this order (`x.js` and `ui.js` use none). Cancellation flows down: `input.js` interrupts `selection.js` and `feedback.js`; `feedback.js` never reads keyboard state. `npm run check` runs `scripts/layers.mjs`, which rejects X selectors or labels outside `x.js` and any `wheel.*` reference against the order.
+
+Capture-phase input listeners register at `document_start`; DOM observation starts when the document is ready. Controls require `/home` and the visible English `For you` tab selected inside `primaryColumn`.
 
 ## Selection and alignment
 
@@ -30,7 +44,7 @@ A MutationObserver reconciles dismissals, checks active alignment immediately, a
 
 Likes click only `data-testid="like"`, never unlike. An in-memory set prevents duplicate requests while native state updates. Selection advances immediately, including past already-liked posts, and stays put at the last loaded item.
 
-Not interested has one pending operation containing an AbortController, captured menu, and discovery deadline:
+Not interested has one pending operation, an explicit state machine in `feedback.js` (opening → locating → dispatched, or unavailable, or cancelled) holding the captured menu and discovery deadline:
 
 1. Capture the post ID and existing menus; click the post's caret.
 2. Wait for a newly visible menu, excluding menus already open.
@@ -40,7 +54,7 @@ Not interested has one pending operation containing an AbortController, captured
 
 Menu discovery polls every 40 ms for up to 1,600 ms, without automatic retry. Unavailable feedback leaves the post unchanged, advances to the captured next item when present, and shows a notice. Success means the native control was clicked, not that X's server accepted feedback.
 
-Cancellation stops dispatch and advancement. wheel closes its own menu through X's Escape handler. If cancellation precedes menu appearance, ownership lasts until the original discovery deadline so a late menu can be closed. Intervening input that could open another menu revokes this inference. Direct interaction inside the menu cancels automation and leaves it open for the user. Already-open user menus are never touched.
+Cancellation stops dispatch and advancement; every source goes through `feedback.interrupt`, whose source table in `feedback.js` decides whether wheel keeps ownership of a late menu. wheel closes its own menu through X's Escape handler. If cancellation precedes menu appearance, ownership lasts until the original discovery deadline so a late menu can be closed. Intervening input that could open another menu revokes this inference. Direct interaction inside the menu cancels automation and leaves it open for the user. Already-open user menus are never touched.
 
 After dismissal, selection prefers the captured next neighbor, then the previous neighbor, otherwise clears. Pending dismissal records suppress the old article until its identity content is removed. Mutation records detect removal and restoration within one batch, allowing native Undo to restore navigation. Unrelated text changes and equivalent timestamp replacements do not release suppression. There is no permanent blacklist or timed redispatch.
 
@@ -48,11 +62,24 @@ After dismissal, selection prefers the captured next neighbor, then the previous
 
 Typing, composition, modifiers, held-key repeats, and ordinary menus/dialogs block shortcuts. During pending feedback, navigation can cancel the wait; additional like/dismiss keys are consumed without dispatch. Consumed keys' keypress/keyup events are also intercepted to avoid X shortcut conflicts.
 
+## When X changes
+
+If posts stop being recognizable (articles in the column, but no post matches or none has an ID, on two checks a second apart), wheel shows one notice per page load and its shortcuts find nothing to act on. `l` on a post with neither a like nor an unlike control shows `Like control not found.` once. Other breakages fail closed with the existing notices; see the degradation matrix in [resilience-plan.md](resilience-plan.md#34-degradation-matrix).
+
+To fix drift:
+
+1. Run the live probe (`npm run probe:live`, see [README.md](../README.md#development)); it names the failing inventory rows.
+2. Edit the matching `contract` entry (or, rarely, its lookup) in `extension/x.js`. Add a second `candidates` entry only when the probe shows X serving both forms; never guess a fallback.
+3. Run the required checks in [AGENTS.md](../AGENTS.md#verification-and-completion), then the probe again.
+4. Bump the `manifest.json` version and run `npm run package`.
+
 ## Data, packaging, and checks
 
 Runtime inputs are the displayed DOM and keystrokes. State exists only in memory for the page lifetime. There is no storage, analytics, credential handling, backend, or direct network client; X owns requests from native controls.
 
 Packaging reads the manifest version and writes `dist/wheel-<version>.zip`, replacing that version's ZIP. All top-level files in `extension/` are included, so tools and fixtures must stay elsewhere.
+
+Unit tests (`npm run test:unit`) load modules into a `node:vm` context the way Chrome does, with fakes for the modules a test leaves out; they cover feed grouping and reconciliation, the dismissal state machine and interrupt table, and input gating. Layout, scrolling, and snapping stay in browser tests.
 
 `tests/feed.js` defines synthetic records with required IDs, also used in status URLs and action logs. `tests/fixture.mjs` embeds it in the HTML fixture for routed browser tests. The vet adapter selects Git-tracked/unignored JavaScript, runs Node syntax checks, then invokes the upstream analyzer and workflow checker. `vet.yaml` controls rules. See [AGENTS.md](../AGENTS.md#verification-and-completion) for required checks and [README.md](../README.md#development) for setup.
 
