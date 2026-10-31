@@ -6,7 +6,7 @@
 
 ## Why I built noyes
 
-I scroll X a lot, but the signal-to-noise ratio hasn't been great for me recently. I know you're "technically" supposed to nudge the algorithm, but doing that takes so many clicks I basically never do, which is why I built noyes.
+I scroll X a lot, but the signal-to-noise ratio hasn't been great for me recently. I know I can nudge the algorithm by telling it what I like and don't like, but doing that takes so many clicks I basically never bother, which is why I built noyes.
 
 ## How it works
 
