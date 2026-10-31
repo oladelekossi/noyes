@@ -1,62 +1,110 @@
 # noyes
 
-Fine-tune your X feed from the keyboard.
+Fine-tune your X feed from the keyboard. `j`/`k` to move, `l` to like, `n` for Not interested, `u` to undo.
 
-Move through **For You**, like posts, and send **Not interested** feedback. A green outline marks the selected post or connected conversation. X handles dismissal, confirmation, follow-up questions, and Undo.
+## What this does
 
-No settings, accounts, API keys, build step, or automatic feed browsing.
+X's **For You** feed learns from what you like and what you dismiss, but teaching it means a lot of mouse travel through tiny menus. noyes turns that into five keys. A green outline marks the selected post; every action clicks X's own controls, so X still handles the confirmation, the follow-up question, and Undo.
 
-> **Status:** early release. Navigation and selection are verified on live X; like and Not-interested dispatch are tested against a synthetic feed only. X can change its page at any time and break noyes until it is updated. Please [report breakage](https://github.com/oladelekossi/noyes/issues).
+**Key features**
 
-## Install locally
+- **Vim-style navigation.** `j` and `k` walk the feed one post at a time, keeping the selected post just under the header.
+- **One-key feedback.** `l` likes and advances; `n` sends Not interested and advances.
+- **Conversations as one unit.** A connected thread is a single stop; likes and feedback go to the last visible reply.
+- **Undo that uses X's undo.** `u` restores the last dismissal; `j` restores a dismissed post when you back into it.
+- **Fails closed.** If X changes its page, noyes tells you once and does nothing rather than clicking the wrong thing.
+- **Nothing else.** No settings, accounts, API keys, build step, analytics, storage, network requests, or automatic browsing.
 
-For Chrome and Chromium-based browsers:
+> **Status:** early release. Navigation and selection are verified on live X; like and Not-interested dispatch are tested against a synthetic feed. X can change its page at any time and break noyes until it is updated — please [report breakage](https://github.com/oladelekossi/noyes/issues).
+
+## Installation
+
+Chrome and Chromium-based browsers:
 
 1. Download or clone this repository.
-2. Open `chrome://extensions` and enable **Developer mode**.
-3. Choose **Load unpacked** and select the repository's **extension** folder.
-4. Refresh X, open **For You**, and press `k` to select a post.
+2. Open `chrome://extensions` and turn on **Developer mode**.
+3. Click **Load unpacked** and choose the repository's `extension` folder.
+4. Open [x.com](https://x.com), go to **For You**, and press `k`.
 
-After changing extension files, click **Reload** on noyes's extension card and refresh each X tab where you use it.
+To update, pull the latest changes, click **Reload** on noyes's card in `chrome://extensions`, and refresh X.
 
-## Keyboard shortcuts
+## Usage
 
 | Key | Action |
 | --- | --- |
 | `k` | Next post or conversation |
-| `j` | Previous post or conversation; restore a dismissed predecessor through native Undo |
-| `l` | Like, then select the next post (never unlike) |
-| `n` | Not interested, or skip when feedback is unavailable |
-| `u` | Undo the latest `n` dismissal while X still offers Undo |
+| `j` | Previous post or conversation (restores a dismissed one if you back into it) |
+| `l` | Like, then move to the next post. Never unlikes. |
+| `n` | Not interested, then move to the next post. Skips with a notice if X offers no feedback action. |
+| `u` | Undo the latest `n`, while X still offers Undo |
 
-The first navigation key selects the first visible post. Navigation puts its top below the feed header and briefly corrects feed shifts. If an ad or gap fills the viewport, or there is no loaded neighboring post, each `j`/`k` press scrolls one screen in that direction so you can reach more posts. Loading alone never triggers another scroll. After you manually scroll past the selection, the next shortcut starts from the visible feed. `l` and `n` act only on a visible post; `l` advances past already-liked posts and stays put at the last loaded post.
+Good to know:
 
-Connected conversations form one navigation item. Their green outline spans the context and reply; likes and feedback target the last displayed reply. Grouping uses a shared feed cell or visible avatar connector, never mentions alone.
-
-`n` advances when it clicks X's native feedback action. If that action is missing or unrecognized, it closes its menu, skips with a notice that nothing was sent, and leaves the post unchanged.
-
-Going backward with `j` restores a dismissed predecessor through X's native Undo when it lies between the current post and the previous ordinary post. Consecutive `j` presses can restore consecutive dismissals in feed order. This works only while the original native Undo remains available and unambiguous; otherwise noyes shows `Undo unavailable.` and continues normal backward navigation. After manually scrolling away or clearing selection, the first navigation key starts from the visible feed without automatically undoing anything.
-
-`u` selects the restored post after using X's native Undo. It targets only the latest successful `n`, once; it does not walk older dismissals or undo likes. Restoring that same post with `j` consumes its `u` entry too. During a pending `n`, `u` cancels that action instead.
-
-## Limits and cancellation
-
-- Supports X's **English desktop web interface** on `x.com` and `twitter.com`, only in **For You**. It does not modify the native phone app.
-- Shortcuts stay inactive while typing or using a dialog/menu. Modifiers and held-key repeats do not trigger actions. noyes takes precedence over X's native shortcuts for these five keys in this context.
-- No extra post buttons are added. A native menu may briefly appear during feedback; follow-up prompts stay under your control.
-- Navigation, key presses, clicks elsewhere, scrolling, and touch cancel feedback that has not been dispatched. Cancellation does not advance selection or pull you back. noyes closes its own abandoned menu when it can identify it and preserves menus you open yourself.
+- The first navigation key selects the first visible post. If you scroll away by hand, the next key starts from what's on screen.
+- When an ad or empty gap fills the screen, or there is no loaded post in that direction, `j`/`k` scroll one screen instead.
+- `l` and `n` act only on a visible post. `l` steps past posts you already liked.
+- `j` restores a dismissed post only while X's own Undo for it is still available and unambiguous; otherwise it shows `Undo unavailable.` and keeps moving.
+- `u` targets only the most recent successful `n`, once. During a pending `n`, `u` cancels it instead.
+- Shortcuts are off while you type or while a dialog or menu is open. Modifier combinations and held-key repeats do nothing. For these five keys, noyes takes precedence over X's native shortcuts on For You.
+- Pressing another key, clicking, scrolling, or touching cancels a feedback action that has not yet been sent. noyes closes its own abandoned menu and leaves menus you opened alone.
 - noyes never substitutes mute, block, report, or ad feedback for Not interested.
-- If X changes its page so noyes can no longer recognize posts, noyes shows a notice once and its shortcuts do nothing until noyes is updated.
-- X controls recommendation changes and can change its page structure or wording. noyes cannot guarantee compatibility or how much your recommendations change.
+
+## Limits
+
+- English desktop web interface only, on `x.com` and `twitter.com`, and only in **For You**.
+- X controls what recommendations change and how. noyes can only send the same signals you could send by hand.
+- X can change its page structure or wording at any time. When that happens, noyes shows one notice and its shortcuts do nothing until it is updated.
 
 ## Privacy
 
-noyes runs only on X/Twitter pages and reads the displayed DOM to carry out your requested action. It has no analytics, storage, backend, external requests, or third-party runtime dependencies. Feedback uses X's own interface.
+noyes runs only on X pages and reads the page in front of you to carry out the action you asked for. It has no analytics, storage, backend, external requests, or third-party runtime code. Feedback goes through X's own interface, exactly as if you had clicked it.
 
-## Contributing
+## Architecture
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, checks, and how to file a useful bug report. Coding agents should read [AGENTS.md](AGENTS.md).
+Plain JavaScript, Manifest V3, no build step. The content scripts load in this order and each may depend only on the ones above it:
+
+| File | Purpose |
+| --- | --- |
+| `extension/x.js` | The X adapter: the only file that knows what X's page looks like. When X changes, the fix goes here. |
+| `extension/ui.js` | noyes's own UI: the transient notice and layout CSS variables. |
+| `extension/feed.js` | The feed model: posts and conversations as navigation items; ads and dismissed posts are not items. |
+| `extension/selection.js` | Which item is selected, its outline, and the align/settle step that keeps it under X's header. |
+| `extension/feedback.js` | Like, dismiss, and undo by clicking X's native controls. Never hides a post locally and pretends. |
+| `extension/input.js` | Turns keyboard, wheel, touch, and pointer events into commands and interrupts. |
+| `extension/main.js` | Starts everything once per page and watches for X's layout drifting away. |
+| `extension/content.css` | The outline and notice styles. |
+
+`npm run check` enforces the one-way layering and that only `x.js` contains X selectors, labels, or URL shapes. [docs/architecture.md](docs/architecture.md) has the full picture; [docs/resilience-plan.md](docs/resilience-plan.md) lists every assumption noyes makes about X's page and what happens when each one breaks.
+
+## Philosophy
+
+1. **Click what the user would click.** noyes only presses X's own controls, matched exactly. Never the first menu item, never a guess from an icon or position.
+2. **Fail closed.** When something on the page is unrecognizable, do nothing and say so. Never act on the wrong post.
+3. **One file knows about X.** Everything X-specific lives in `x.js`, so a page change is a data fix, not a rewrite.
+4. **No surprises.** No hidden state, no local hiding of posts, no network, no automation beyond the key you pressed.
+
+## Development
+
+Requires Git, Node.js 20+, npm, and `zip`.
+
+```sh
+npm ci
+npx playwright install chromium
+npm run check        # lint (vet) and module layering
+npm run test:vet     # tests for the lint adapter
+npm run test:unit    # feed grouping, feedback state machine, shortcut gating
+npm test             # Playwright suite on a synthetic feed
+npm run package      # writes dist/noyes-<version>.zip from extension/
+```
+
+No test touches a real X account. Set `NOYES_CHROMIUM_EXECUTABLE` to a Chromium or Chrome for Testing binary if the extension-loading test needs it; regular Chrome may refuse command-line extension loading.
+
+**Debugging a navigation bug.** `npm run debug:build` makes a separate, opt-in debug extension with an input/state flight recorder and an offline replay. It records no post content. See [docs/debug-recorder.md](docs/debug-recorder.md).
+
+**Checking whether X changed.** `NOYES_PROFILE_DIR=~/noyes-probe-profile npm run probe:live` runs a read-only probe against live X with a logged-in profile (create the directory first; the first run asks you to log in). It prints counts and booleans per assumption and names any that failed.
+
+`npm run check` uses [vet](https://github.com/gdevillele/vet), pinned in `vendor/` (see [vendor/README.md](vendor/README.md)); `vet.yaml` holds the rules. Coding agents should read [AGENTS.md](AGENTS.md).
 
 ## License
 
-[MIT](LICENSE). noyes is not affiliated with or endorsed by X Corp.
+[MIT](LICENSE). Use it, change it, share it. noyes is not affiliated with or endorsed by X Corp.

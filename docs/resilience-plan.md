@@ -372,7 +372,7 @@ Command: `node --test tests/unit/` from the repository root (`npm run test:unit`
 
 ### 4.2 Browser tests (`built`, reorganized in Phase 5)
 
-Keep Playwright for alignment, snap, noyes release, mutation batching, and the end-to-end flows on the synthetic feed. Changes:
+Keep Playwright for alignment, snap, wheel release, mutation batching, and the end-to-end flows on the synthetic feed. Changes:
 
 - `tests/helpers.mjs` exports `inject({ page })`: reads `extension/manifest.json`, `addStyleTag` for each CSS, `addScriptTag` for each JS in order. All three spec files use it; no spec names `content.js`.
 - Split `noyes.spec.mjs` into `feedback.spec.mjs`, `undo.spec.mjs`, `selection.spec.mjs`, `grouping.spec.mjs`, `input.spec.mjs`, keeping test names unchanged so history is searchable. `navigation.spec.mjs` and `extension.spec.mjs` stay.

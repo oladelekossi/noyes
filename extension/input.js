@@ -1,4 +1,4 @@
-// Input: turns raw keyboard, noyes, touch, and pointer events into commands
+// Input: turns raw keyboard, wheel, touch, and pointer events into commands
 // (navigate, like, dismiss, undo) and interrupts of selection and feedback.
 (() => {
   "use strict";
@@ -90,7 +90,7 @@
           scrollsItself(element),
       );
     if (nested) return;
-    // Chrome may already have queued a snap animation for this noyes event.
+    // Chrome may already have queued a snap animation for this wheel event.
     // Apply this first delta once without snapping; later deltas stay native.
     event.preventDefault();
     const unit = event.deltaMode === 1 ? 16 : 1;

@@ -39,7 +39,7 @@ When no eligible post is visible or the selected item has no loaded neighbor, na
 
 Navigation aligns the item's top below the feed header. For 1.5 seconds, `html.noyes-aligning` disables browser scroll anchoring and snaps to a one-pixel pseudo-element at the selected header. Selected articles temporarily use `overflow: clip` so X's inner overflow container does not trap that snap target. Mutation, scroll, and animation-frame callbacks check alignment, with at most three scripted corrections. The same bounded watch waits for a temporarily unmounted next post to return by ID.
 
-Noyes, touch, pointer, or new key input ends alignment; held repeats of a consumed shortcut do not. Releasing the anchor flushes layout and cancels queued snap animation. The non-passive noyes listener applies the first page-scroll delta once and prevents its default action, avoiding a replayed snap; subsequent noyes events are native. Nested scrolling and Ctrl-noyes zoom keep their defaults. Marker restoration alone never scrolls.
+Wheel, touch, pointer, or new key input ends alignment; held repeats of a consumed shortcut do not. Releasing the anchor flushes layout and cancels queued snap animation. The non-passive wheel listener applies the first page-scroll delta once and prevents its default action, avoiding a replayed snap; subsequent wheel events are native. Nested scrolling and Ctrl-wheel zoom keep their defaults. Marker restoration alone never scrolls.
 
 A MutationObserver reconciles dismissals, checks active alignment immediately, and batches marker refreshes through animation frames. A one-second refresh catches URL changes that reuse the DOM. No autonomous feed browsing occurs.
 
@@ -75,7 +75,7 @@ If posts stop being recognizable (articles in the column, but no post matches or
 
 To fix drift:
 
-1. Run the live probe (`npm run probe:live`, see [README.md](../CONTRIBUTING.md#development)); it names the failing inventory rows.
+1. Run the live probe (`npm run probe:live`, see [README.md](../README.md#development)); it names the failing inventory rows.
 2. Edit the matching `contract` entry (or, rarely, its lookup) in `extension/x.js`. Add a second `candidates` entry only when the probe shows X serving both forms; never guess a fallback.
 3. Run the required checks in [AGENTS.md](../AGENTS.md#verification-and-completion), then the probe again.
 4. Bump the `manifest.json` version and run `npm run package`.
@@ -88,7 +88,7 @@ Packaging reads the manifest version and writes `dist/noyes-<version>.zip`, repl
 
 Unit tests (`npm run test:unit`) load modules into a `node:vm` context the way Chrome does, with fakes for the modules a test leaves out; they cover feed grouping and reconciliation, the dismissal state machine and interrupt table, and input gating. Layout, scrolling, and snapping stay in browser tests.
 
-`tests/feed.js` defines synthetic records with required IDs, also used in status URLs and action logs. `tests/fixture.mjs` embeds it in the HTML fixture for routed browser tests. The vet adapter selects Git-tracked/unignored JavaScript, runs Node syntax checks, then invokes the upstream analyzer and workflow checker. `vet.yaml` controls rules. See [AGENTS.md](../AGENTS.md#verification-and-completion) for required checks and [README.md](../CONTRIBUTING.md#development) for setup.
+`tests/feed.js` defines synthetic records with required IDs, also used in status URLs and action logs. `tests/fixture.mjs` embeds it in the HTML fixture for routed browser tests. The vet adapter selects Git-tracked/unignored JavaScript, runs Node syntax checks, then invokes the upstream analyzer and workflow checker. `vet.yaml` controls rules. See [AGENTS.md](../AGENTS.md#verification-and-completion) for required checks and [README.md](../README.md#development) for setup.
 
 ## Verification limits
 
