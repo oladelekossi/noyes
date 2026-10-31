@@ -44,7 +44,7 @@ Every action goes through X's own UI, as if you clicked it yourself.
 ## Other things to know
 
 1. Right now this only works on English and desktop.
-2. X changes its page all the time, so this might break. If it does, I built a little recorder for debugging — `npm run debug:build`. [Open an issue](https://github.com/oladelekossi/noyes/issues) and attach the recording.
+2. X changes its page all the time, so this might break. If it does, I built a little recorder for debugging — `npm run debug:build`
 
 ## A few other things my agent says I should put in here
 
