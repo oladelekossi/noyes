@@ -6,7 +6,7 @@
   "content_scripts": [
     {
       "matches": ["https://x.com/*", "https://twitter.com/*"],
-      "js": ["x.js", "content.js"],
+      "js": ["x.js", "ui.js", "feedback.js", "content.js"],
       "css": ["content.css"],
       "run_at": "document_start"
     }

@@ -1,0 +1,29 @@
+// wheel's own page UI: the transient notice and layout CSS variables.
+(() => {
+  "use strict";
+  const wheel = (globalThis.__wheel ??= {});
+  if (wheel.ui) return;
+
+  const NOTICE_DURATION = 4500;
+  let noticeTimer;
+
+  function notify({ message }) {
+    let notice = document.querySelector(".wheel-notice");
+    if (!notice) {
+      notice = document.createElement("div");
+      notice.className = "wheel-notice";
+      notice.setAttribute("role", "status");
+      notice.setAttribute("aria-live", "polite");
+      document.body.append(notice);
+    }
+    notice.textContent = message;
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => notice.remove(), NOTICE_DURATION);
+  }
+
+  function clearNotice() {
+    document.querySelector(".wheel-notice")?.remove();
+  }
+
+  wheel.ui = Object.freeze({ notify, clearNotice });
+})();

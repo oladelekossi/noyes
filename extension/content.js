@@ -3,31 +3,23 @@
   if (globalThis.__wheelLoaded) return;
   globalThis.__wheelLoaded = true;
 
-  const x = globalThis.__wheel.x;
+  const wheel = globalThis.__wheel;
+  const x = wheel.x;
   const SHORTCUTS = ["j", "k", "l", "n", "u"];
-  const SKIP_NOTICE = "Skipped — feedback unavailable.";
   const VIEWPORT_TOP = x.layout.headerHeight;
   const VIEWPORT_BOTTOM = x.layout.bottomMargin;
   // Bound automatic alignment to a short navigation transition.
   const SETTLE_WINDOW = 1500;
   const SETTLE_CORRECTIONS = 3;
-  const MENU_TIMEOUT = x.timing.menuTimeout;
-  const POLL_INTERVAL = x.timing.pollInterval;
-  const CANCELLED = new Error("cancelled");
 
   const dismissedPosts = new Map();
   const handledKeys = new Set();
-  const pendingLikes = new Set();
   let scheduled = false;
-  let noticeTimer;
   let selection = null;
   let settling = null;
-  let pendingFeedback = null;
-  let lastDismissal = null;
 
   // --- DOM helpers ---------------------------------------------------------
 
-  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const unmodified = (event) =>
     !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
   const visible = x.visible;
@@ -35,20 +27,6 @@
   const byKey = (key) => (item) => item.key === key;
   const onForYou = x.onForYou;
   const overlayOpen = x.overlayOpen;
-
-  function notify(message) {
-    let notice = document.querySelector(".wheel-notice");
-    if (!notice) {
-      notice = document.createElement("div");
-      notice.className = "wheel-notice";
-      notice.setAttribute("role", "status");
-      notice.setAttribute("aria-live", "polite");
-      document.body.append(notice);
-    }
-    notice.textContent = message;
-    clearTimeout(noticeTimer);
-    noticeTimer = setTimeout(() => notice.remove(), 4500);
-  }
 
   // --- Feed model ----------------------------------------------------------
 
@@ -259,7 +237,7 @@
   };
 
   function releaseForWheel(event) {
-    cancelFeedback({ allowLate: true, event });
+    wheel.feedback.interrupt({ source: "wheel", event });
     const wasAligning = !!settling;
     stopSettling();
     if (
@@ -291,190 +269,7 @@
     });
   }
 
-  // --- Native actions ------------------------------------------------------
-
-  function likePost(post) {
-    const key = postKey(post);
-    const like = x.likeControl({ post });
-    if (!key || !like) return;
-    if (pendingLikes.has(key)) return;
-    pendingLikes.add(key);
-    like.click();
-    setTimeout(() => pendingLikes.delete(key), 1500);
-  }
-
-  function undoDismissal() {
-    const candidates = lastDismissal ? x.undoControls(lastDismissal) : [];
-    if (candidates.length !== 1) {
-      notify("Undo unavailable.");
-      return;
-    }
-    const { key, post } = lastDismissal;
-    candidates[0].click();
-    document.querySelector(".wheel-notice")?.remove();
-    lastDismissal = null;
-    dismissedPosts.delete(post);
-    selectItem({ key });
-  }
-
-  // Stop before touching a recycled post or a menu after the user navigates,
-  // presses a key, or clicks elsewhere.
-  async function waitFor({ read, signal, timeout = MENU_TIMEOUT }) {
-    const deadline = performance.now() + timeout;
-    while (true) {
-      if (signal.aborted) throw CANCELLED;
-      const result = read();
-      if (result) return result;
-      if (performance.now() >= deadline) throw new Error("timeout");
-      await sleep(POLL_INTERVAL);
-    }
-  }
-
-  const closeMenu = (menu) => x.closeMenu({ menu });
-
-  function cancelFeedback({ allowLate, event }) {
-    const operation = pendingFeedback;
-    if (!operation) return;
-    if (x.menuAt({ element: event?.target })) {
-      // Input inside a native menu transfers control to the user, including
-      // before our polling has captured that menu. Do not interrupt its click.
-      operation.menu = null;
-      operation.allowLate = false;
-    }
-    operation.allowLate &&= allowLate;
-    operation.controller.abort();
-    closeMenu(operation.menu);
-  }
-
-  // Click X's own native feedback action for one post. Resolves "sent",
-  // "unavailable", or undefined when cancelled or the post changed.
-  async function dismiss(post) {
-    if (pendingFeedback || !onForYou() || overlayOpen()) return;
-    const key = postKey(post);
-    if (!key) return;
-    const caret = x.caret({ post });
-    if (!caret) {
-      notify(SKIP_NOTICE);
-      return "unavailable";
-    }
-
-    const controller = new AbortController();
-    const operation = {
-      controller,
-      previousMenus: new Set(x.menus({ root: document })),
-      menu: null,
-      allowLate: true,
-      deadline: performance.now() + MENU_TIMEOUT,
-    };
-    pendingFeedback = operation;
-    const discoverMenu = () =>
-      x
-        .menus({ root: document })
-        .find((menu) => !operation.previousMenus.has(menu) && visible(menu));
-    const current = () =>
-      post.isConnected && postKey(post) === key && onForYou();
-    const assertCurrent = () => {
-      if (!current()) throw CANCELLED;
-    };
-    const cancel = (event) => {
-      if (event.isTrusted)
-        cancelFeedback({
-          event,
-          allowLate: event.key === "Escape" && unmodified(event),
-        });
-    };
-    document.addEventListener("keydown", cancel, true);
-    let outcome;
-
-    try {
-      caret.click();
-      operation.menu = await waitFor({
-        read: () => {
-          assertCurrent();
-          return discoverMenu();
-        },
-        signal: controller.signal,
-      });
-      const item = await waitFor({
-        read: () => {
-          assertCurrent();
-          if (!visible(operation.menu)) throw CANCELLED;
-          return x.feedbackItem({ menu: operation.menu });
-        },
-        signal: controller.signal,
-      });
-      assertCurrent();
-      if (controller.signal.aborted) throw CANCELLED;
-      dismissedPosts.set(post, { key, time: x.timestamp({ post }) });
-      // Capture the native result's container before X can replace the article.
-      const scope = x.cell({ post }) || post;
-      item.click();
-      lastDismissal = { key, post, scope };
-      outcome = "sent";
-      // X owns the dismissal, confirmation, optional follow-up, and Undo.
-      // Never hide a post locally and pretend feedback was sent.
-    } catch (error) {
-      if (error === CANCELLED) controller.abort();
-      else if (current() && !controller.signal.aborted) {
-        // Discovery timed out on an unchanged post: skip it, leaving it intact.
-        // A changed post or user cancellation is not a request to skip.
-        outcome = "unavailable";
-        closeMenu(operation.menu);
-        notify(SKIP_NOTICE);
-      }
-    } finally {
-      // Aborting dispatch does not cancel X's delayed menu creation. Retain
-      // ownership until it arrives, unless later input could open a user menu.
-      while (
-        controller.signal.aborted &&
-        operation.allowLate &&
-        !operation.menu &&
-        onForYou() &&
-        performance.now() < operation.deadline
-      ) {
-        operation.menu = discoverMenu() || null;
-        if (!operation.menu) await sleep(POLL_INTERVAL);
-      }
-      if (controller.signal.aborted) closeMenu(operation.menu);
-      document.removeEventListener("keydown", cancel, true);
-      if (outcome !== "sent") dismissedPosts.delete(post);
-      if (pendingFeedback === operation) pendingFeedback = null;
-    }
-    return outcome;
-  }
-
   // --- Shortcuts -----------------------------------------------------------
-
-  function likeCurrent({ items, current }) {
-    const nextKey = items[items.indexOf(current) + 1]?.key;
-    likePost(current.target);
-    if (nextKey) selectItem({ key: nextKey });
-  }
-
-  function dismissCurrent({ items, current }) {
-    const index = items.indexOf(current);
-    const nextKey = items[index + 1]?.key;
-    const neighbors = [items[index + 1], items[index - 1]]
-      .filter(Boolean)
-      .map((item) => item.key);
-    void dismiss(current.target).then((outcome) => {
-      if (!outcome || !onForYou()) return;
-      if (selection && selection.key !== current.key) return;
-      if (outcome === "unavailable") {
-        if (nextKey) selectItem({ key: nextKey });
-        return;
-      }
-      // Prefer the captured next neighbor, then the previous one; a missing
-      // next neighbor may still be remounting, so wait for it by ID.
-      const available = readFeed();
-      const next = neighbors
-        .map((key) => available.find(byKey(key)))
-        .find(Boolean);
-      if (next) selectItem({ item: next });
-      else if (neighbors[0]) selectItem({ key: neighbors[0] });
-      else clearSelection();
-    });
-  }
 
   function handleShortcut(event) {
     const key = event.key;
@@ -489,19 +284,20 @@
       return;
     // A menu opened by wheel can be cancelled by navigation. Other overlays
     // keep their native shortcuts and focus handling.
-    if (overlayOpen() && !pendingFeedback) return;
+    if (overlayOpen() && !wheel.feedback.pending()) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     handledKeys.add(key);
     if (event.repeat) return;
     if (key === "u") {
-      if (pendingFeedback) cancelFeedback({ allowLate: true });
-      else undoDismissal();
+      if (wheel.feedback.pending())
+        wheel.feedback.interrupt({ source: "shortcut" });
+      else wheel.feedback.undo();
       return;
     }
     // Navigation cancels pending feedback; extra like/dismiss keys are consumed.
-    if (pendingFeedback && (key === "n" || key === "l")) return;
-    cancelFeedback({ allowLate: true });
+    if (wheel.feedback.pending() && (key === "n" || key === "l")) return;
+    wheel.feedback.interrupt({ source: "shortcut" });
 
     const items = readFeed();
     if (key === "j" || key === "k") {
@@ -511,8 +307,8 @@
     const current = currentItem(items);
     if (!current) return;
     selectItem({ item: current, scroll: false });
-    if (key === "l") likeCurrent({ items, current });
-    else dismissCurrent({ items, current });
+    if (key === "l") wheel.feedback.like({ item: current, items });
+    else void wheel.feedback.dismiss({ item: current, items });
   }
 
   // Deliberate input ends the watch first, so wheel never drags the page back
@@ -524,9 +320,12 @@
       (event) => {
         stopSettling();
         if (event.isTrusted)
-          cancelFeedback({
+          wheel.feedback.interrupt({
             event,
-            allowLate: type === "touchstart" || event.pointerType === "touch",
+            source:
+              type === "touchstart" || event.pointerType === "touch"
+                ? "touch"
+                : "pointer",
           });
       },
       { capture: true, passive: true },
@@ -556,6 +355,19 @@
       true,
     );
   addEventListener("blur", () => handledKeys.clear());
+  // Unconsumed keys cancel pending feedback; consumed shortcuts never reach
+  // the document because handleShortcut stops them at the window.
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (!event.isTrusted || !wheel.feedback.pending()) return;
+      wheel.feedback.interrupt({
+        event,
+        source: event.key === "Escape" && unmodified(event) ? "escape" : "key",
+      });
+    },
+    true,
+  );
 
   // --- Page observation ----------------------------------------------------
 
@@ -599,6 +411,20 @@
     setInterval(schedule, 1000);
     sync();
   }
+
+  // Transitional bridge: feedback.js reaches feed and selection through these
+  // until they become their own modules.
+  wheel.feed = Object.freeze({
+    read: readFeed,
+    suppress: ({ post, key }) =>
+      dismissedPosts.set(post, { key, time: x.timestamp({ post }) }),
+    release: ({ post }) => dismissedPosts.delete(post),
+  });
+  wheel.selection = Object.freeze({
+    get: () => selection?.key ?? null,
+    select: selectItem,
+    clear: clearSelection,
+  });
 
   if (document.readyState === "loading")
     document.addEventListener("DOMContentLoaded", start, { once: true });

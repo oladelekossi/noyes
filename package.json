@@ -5,6 +5,7 @@
   "description": "Fine-tune your X feed, one keystroke at a time.",
   "scripts": {
     "test": "playwright test",
+    "test:unit": "node --test \"tests/unit/*.test.mjs\"",
     "check": "npm run vet && node scripts/layers.mjs",
     "package": "node scripts/package.mjs",
     "vet": "node scripts/vet.mjs",
