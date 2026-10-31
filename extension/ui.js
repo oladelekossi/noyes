@@ -25,5 +25,13 @@
     document.querySelector(".wheel-notice")?.remove();
   }
 
-  wheel.ui = Object.freeze({ notify, clearNotice });
+  // X's header height has one home, x.layout; content.css reads it from here.
+  function setLayoutVars({ layout }) {
+    document.documentElement.style.setProperty(
+      "--wheel-header-height",
+      `${layout.headerHeight}px`,
+    );
+  }
+
+  wheel.ui = Object.freeze({ notify, clearNotice, setLayoutVars });
 })();

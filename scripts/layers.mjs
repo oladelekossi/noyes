@@ -14,12 +14,13 @@ const ALLOWED = {
   "feedback.js": ["x", "ui", "feed", "selection"],
   "input.js": ["x", "feed", "selection", "feedback"],
   "main.js": ["x", "ui", "feed", "selection", "feedback", "input"],
-  // Transitional: content.js still holds unsplit modules (removed in Phase 4).
-  "content.js": "*",
 };
 const X_KNOWLEDGE =
   /data-testid|\[role=|\/status\/|not interested|placementTracking|promotedIndicator/i;
 const REFERENCE = /(?<![\w$])(?:__)?wheel\.([A-Za-z_$][\w$]*)/g;
+// `const { feed, x } = wheel;` references feed and x.
+const DESTRUCTURE =
+  /\{([^{}]*)\}\s*=\s*(?:globalThis\.)?(?:__)?wheel(?![\w$.])/g;
 
 const moduleName = (file) => file.replace(/\.js$/, "");
 const lines = (source) => source.split("\n");
@@ -48,16 +49,22 @@ function setup({ root }) {
 
 function violations({ directory, file }) {
   const found = [];
-  const exempt = ALLOWED[file] === "*";
-  const allowed = new Set([moduleName(file), ...(exempt ? [] : ALLOWED[file])]);
+  const allowed = new Set([moduleName(file), ...ALLOWED[file]]);
   const source = lines(readFileSync(join(directory, file), "utf8"));
   for (const [index, text] of source.entries()) {
     const at = `extension/${file}:${index + 1}`;
     const knowledge = file !== "x.js" && text.match(X_KNOWLEDGE);
     if (knowledge)
       found.push(`${at}: X knowledge outside x.js: "${knowledge[0]}"`);
-    for (const [, name] of text.matchAll(REFERENCE))
-      if (!exempt && !allowed.has(name))
+    const destructured = [...text.matchAll(DESTRUCTURE)].flatMap(([, names]) =>
+      names.split(",").map((name) => name.split(":")[0].trim()),
+    );
+    const names = [
+      ...[...text.matchAll(REFERENCE)].map(([, name]) => name),
+      ...destructured.filter(Boolean),
+    ];
+    for (const name of names)
+      if (!allowed.has(name))
         found.push(`${at}: ${file} may not use wheel.${name}`);
   }
   return found;

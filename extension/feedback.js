@@ -8,6 +8,7 @@
 
   const SKIP_NOTICE = "Skipped — feedback unavailable.";
   const UNDO_NOTICE = "Undo unavailable.";
+  const LIKE_MISSING_NOTICE = "Like control not found.";
   const LIKE_COOLDOWN = 1500;
   // Interrupts from input that cannot open a user menu. After them, wheel
   // keeps watching for X's delayed feedback menu so it can close it. Any other
@@ -20,6 +21,7 @@
   // The one dismissal operation, or null. See `step` for its states.
   let operation = null;
   let lastDismissal = null;
+  let likeMissingNoticed = false;
 
   const now = () => performance.now();
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -35,6 +37,14 @@
       pendingLikes.add(key);
       control.click();
       setTimeout(() => pendingLikes.delete(key), LIKE_COOLDOWN);
+    } else if (
+      !control &&
+      !likeMissingNoticed &&
+      x.likeState({ post }) === "missing"
+    ) {
+      // Already liked stays silent; no control at all means X changed.
+      likeMissingNoticed = true;
+      wheel.ui.notify({ message: LIKE_MISSING_NOTICE });
     }
     if (nextKey) selection.select({ key: nextKey });
   }

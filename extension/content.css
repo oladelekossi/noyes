@@ -40,14 +40,14 @@ html.wheel-aligning article.wheel-thread-start::before {
   width: 1px;
   height: 1px;
   pointer-events: none;
-  scroll-margin-top: 100px;
+  scroll-margin-top: var(--wheel-header-height, 100px);
   scroll-snap-align: start !important;
 }
 
 article.wheel-selected {
   outline: 2px solid #22c55e !important;
   outline-offset: -2px !important;
-  scroll-margin-top: 100px;
+  scroll-margin-top: var(--wheel-header-height, 100px);
   scroll-margin-bottom: 40px;
 }
 

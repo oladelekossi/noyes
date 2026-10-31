@@ -27,6 +27,7 @@ function setup({ forYou = true } = {}) {
     postId: ({ post }) => (post.isConnected ? post.id : undefined),
     caret: ({ post }) => post.caret ?? null,
     likeControl: ({ post }) => post.like ?? null,
+    likeState: ({ post }) => post.likeState ?? "like",
     cell: ({ post }) => post.cell,
     menus: () => [...page.menus],
     visible: (element) => element.visible !== false,
@@ -396,4 +397,19 @@ test("like clicks once per cooldown and advances", async () => {
   t.feedback.like({ item: t.items[0], items: t.items });
   assert.deepEqual(t.entries("like").length, 2);
   assert.deepEqual(t.entries("select").at(-1), ["select", "102"]);
+});
+
+test("like: a missing control is reported once; already liked is silent", () => {
+  const t = setup();
+  t.posts[0].like = null;
+  t.posts[0].likeState = "liked";
+  t.feedback.like({ item: t.items[0], items: t.items });
+  assert.deepEqual(t.entries("notice"), []);
+  t.posts[0].likeState = "missing";
+  t.feedback.like({ item: t.items[0], items: t.items });
+  t.feedback.like({ item: t.items[0], items: t.items });
+  assert.deepEqual(t.entries("notice"), [
+    ["notice", "Like control not found."],
+  ]);
+  assert.deepEqual(t.entries("like"), []);
 });

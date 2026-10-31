@@ -1,9 +1,15 @@
 import { test, expect } from "@playwright/test";
 import { fixture } from "./fixture.mjs";
 import { resolve } from "node:path";
-const scripts = ["x.js", "ui.js", "feedback.js", "content.js"].map((file) =>
-  resolve("extension", file),
-);
+const scripts = [
+  "x.js",
+  "ui.js",
+  "feed.js",
+  "selection.js",
+  "feedback.js",
+  "input.js",
+  "main.js",
+].map((file) => resolve("extension", file));
 const css = resolve("extension/content.css");
 
 async function start(page) {
@@ -1385,4 +1391,65 @@ test("undo shortcut: cancels pending n without undoing an earlier dismissal", as
   await expect(page.getByRole("menu")).toHaveCount(0);
   await page.keyboard.press("u");
   await expect.poll(() => page.evaluate(() => window.feedback)).toEqual([]);
+});
+
+test("drift: unrecognizable posts show one layout notice", async ({ page }) => {
+  await page.evaluate(() =>
+    document
+      .querySelectorAll("article")
+      .forEach((post) => post.removeAttribute("data-testid")),
+  );
+  const notice = page.locator(".wheel-notice");
+  await expect(notice).toHaveText(
+    "wheel can't read this feed layout — shortcuts are off until wheel is updated.",
+    { timeout: 5000 },
+  );
+  await page.keyboard.press("k");
+  await expect(page.locator(".wheel-selected")).toHaveCount(0);
+});
+
+test("drift: a readable feed never shows the layout notice", async ({
+  page,
+}) => {
+  await page.waitForTimeout(2500);
+  await expect(page.locator(".wheel-notice")).toHaveCount(0);
+});
+
+test("drift: a post with no like control says so once", async ({ page }) => {
+  await page.evaluate(() =>
+    document
+      .querySelectorAll("[data-testid=like]")
+      .forEach((like) => like.remove()),
+  );
+  await page.keyboard.press("l");
+  await expect(page.locator(".wheel-notice")).toHaveText(
+    "Like control not found.",
+  );
+  expect(await page.evaluate(() => window.likes)).toEqual([]);
+});
+
+test("drift: an already liked post stays silent", async ({ page }) => {
+  await page.evaluate(() => {
+    const like = document.querySelector("[data-testid=like]");
+    like.dataset.testid = "unlike";
+  });
+  await page.keyboard.press("l");
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/jordan/status/102",
+  );
+  await expect(page.locator(".wheel-notice")).toHaveCount(0);
+  expect(await page.evaluate(() => window.likes)).toEqual([]);
+});
+
+test("layout: the header height reaches CSS from the adapter", async ({
+  page,
+}) => {
+  expect(
+    await page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue(
+        "--wheel-header-height",
+      ),
+    ),
+  ).toBe("100px");
 });

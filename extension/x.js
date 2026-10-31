@@ -193,6 +193,14 @@
     return like && visible(like) && enabled(like) ? like : null;
   }
 
+  // "like" | "liked" | "missing": missing means X no longer shows either
+  // control where wheel expects it, which is drift rather than a liked post.
+  function likeState({ post }) {
+    if (own({ post, selectors: contract.like.candidates })) return "like";
+    if (own({ post, selectors: contract.like.liked })) return "liked";
+    return "missing";
+  }
+
   function caret({ post }) {
     const element = own({ post, selectors: contract.caret.candidates });
     return element && visible(element) ? element : null;
@@ -266,6 +274,27 @@
           (element.isContentEditable || element.closest(contract.typing)),
       );
 
+  // Counts of what wheel recognizes under `root`, for drift detection and the
+  // live probe. Counts only: never content, handles, or IDs.
+  function health({ root }) {
+    const found = posts({ root });
+    const count = (test) => found.filter((post) => test({ post })).length;
+    const has = (selectors) => (args) => !!own({ ...args, selectors });
+    return {
+      // Any article at all: the one place a bare `article` is queried.
+      articles: root.querySelectorAll("article").length,
+      post: found.length,
+      withId: count(postId),
+      ads: count(isAd),
+      like: count(has(contract.like.candidates)),
+      liked: count(has(contract.like.liked)),
+      caret: count(has(contract.caret.candidates)),
+      avatar: count(avatar),
+      column: !!column(),
+      forYou: onForYou(),
+    };
+  }
+
   wheel.x = Object.freeze({
     contract,
     layout,
@@ -283,6 +312,7 @@
     avatar,
     isConversationRail,
     likeControl,
+    likeState,
     caret,
     menus,
     menuAt,
@@ -291,5 +321,6 @@
     undoControls,
     overlayOpen,
     typingContext,
+    health,
   });
 })();
