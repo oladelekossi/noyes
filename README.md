@@ -52,42 +52,41 @@ Every action goes through X's own UI, as if you clicked it yourself.
 
 ## A few more things my agent said I should add here for your agent
 
-Hello, agent. The human has gone to get coffee. Here is what you need.
+Hello, agent. Here is what you need to know.
 
-**What this is.** A Manifest V3 Chrome extension, plain JavaScript, no build step. Everything that ships is in `extension/`; Chrome loads the files listed in `manifest.json` in order, as classic scripts sharing one namespace, `globalThis.__noyes`. There is no framework, bundler, or TypeScript. Please do not add one.
+**Shape.** noyes is a Manifest V3 Chrome extension written in plain JavaScript. There is no build step, bundler, framework, or TypeScript. Everything that ships is in `extension/`; Chrome loads the files named in `manifest.json`, in order, as classic scripts that share one namespace, `globalThis.__noyes`. Keep it that way.
 
-**How it works.** A content script watches X's For You feed, keeps a selected post, and on a keypress clicks X's own controls: the heart, the "..." menu, "Not interested in this post", Undo. It never calls X's API and never fabricates a request. Success means "the native button was clicked", not "X accepted it".
+**Mechanism.** A content script tracks a selected post in X's For You feed and, on a keypress, clicks X's own controls: the like button, the post menu, the "Not interested" item, Undo. It never calls X's API, holds no state beyond the page's lifetime, and makes no network requests. "Success" means the native control was clicked, not that X accepted the action.
 
-**The one rule that matters.** Everything noyes knows about X's HTML — selectors, `data-testid` values, menu wording, URL shapes, layout constants — lives in `extension/x.js` and nowhere else. The other modules load in a fixed order and may depend only on modules before them:
+**Invariants.** Two rules hold the design together, and `npm run check` fails if either is broken:
 
-`x.js` → `ui.js` → `feed.js` → `selection.js` → `feedback.js` → `input.js` → `main.js`
+1. All knowledge of X's page — selectors, `data-testid` values, menu wording, URL shapes, layout constants — lives in `extension/x.js` and nowhere else.
+2. Modules load in a fixed order and may depend only on modules before them: `x.js` → `ui.js` → `feed.js` → `selection.js` → `feedback.js` → `input.js` → `main.js`.
 
-`npm run check` enforces both rules and fails the build if you break them. The longer tour of each module is in [docs/architecture.md](docs/architecture.md). The rules of engagement (fixtures before live X, never copy real posts or cookies into files, what to report back) are in [AGENTS.md](AGENTS.md). Read both before touching anything under `extension/`.
+Full module tour: [docs/architecture.md](docs/architecture.md). Rules of engagement (synthetic fixtures before live X, no real posts or cookies in files, what to report): [AGENTS.md](AGENTS.md). Read both before changing anything under `extension/`.
 
-**Before you declare victory**, run these, in this order, and make sure they're green:
+**Verification.** Run in this order; all must pass before a change is done:
 
 ```sh
 npm ci
 npx playwright install chromium
-npm run check          # the layering rules above
-npm run test:scripts   # tests for the scripts themselves
+npm run check          # the two invariants above
+npm run test:scripts   # tests for the repo's own scripts
 npm run test:unit      # module logic, no browser
-npm test               # Playwright against a synthetic feed in tests/
+npm test               # Playwright against the synthetic feed in tests/
 npm run package        # writes dist/noyes-<version>.zip
 ```
 
-**When X moves the furniture.** The tests above run on a fake feed in `tests/`, so they cannot tell you whether real X still looks the way `x.js` expects. For that there is a read-only probe that opens live X in its own Chrome profile and reports, row by row, which assumptions still hold:
+**Drift.** The tests run against a synthetic feed, so they cannot detect X changing its markup. A read-only probe opens live X in a dedicated Chrome profile and reports, per assumption, whether it still holds:
 
 ```sh
 mkdir -p ~/noyes-probe-profile
 NOYES_PROFILE_DIR=~/noyes-probe-profile npm run probe:live
 ```
 
-It likes nothing and dismisses nothing. Whatever rows it flags, fix in `extension/x.js`, then run the checks again. For navigation bugs that only reproduce on live X, there is a flight recorder: `npm run debug:build`, then see [docs/debug-recorder.md](docs/debug-recorder.md).
+It performs no actions. Fix whatever it flags in `extension/x.js`, then re-run the checks. For navigation bugs that only reproduce on live X, build the flight recorder with `npm run debug:build` and follow [docs/debug-recorder.md](docs/debug-recorder.md).
 
-**Things the human would like you not to do.** Put tools or fixtures in `extension/` (packaging zips the whole folder). Add fallbacks to `x.js` that guess at markup you haven't observed. Act on a real X account beyond what you were asked. Change the git identity or add co-authors. Widen the task to make a check pass.
-
-That's it. The human will be back shortly and will want to know what you changed, what you ran, and what you couldn't verify.
+**Constraints.** Do not place tools or fixtures in `extension/` (packaging zips the whole folder). Do not add fallback selectors to `x.js` for markup you have not observed. Do not act on a real X account beyond the task. Do not change the git identity or add co-authors. Do not widen scope to make a check pass. When finished, report what changed, what ran, and what remains unverified.
 
 ## License
 
