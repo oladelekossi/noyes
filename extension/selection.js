@@ -3,8 +3,8 @@
 // shifts around it.
 (() => {
   "use strict";
-  const wheel = (globalThis.__wheel ??= {});
-  if (wheel.selection) return;
+  const noyes = (globalThis.__noyes ??= {});
+  if (noyes.selection) return;
 
   // Bound automatic alignment to a short navigation transition.
   const SETTLE_WINDOW = 1500;
@@ -27,19 +27,19 @@
   function paint({ item }) {
     const group = item?.articles || [];
     const thread = group.length > 1;
-    const painted = document.querySelectorAll(".wheel-selected, .wheel-thread");
+    const painted = document.querySelectorAll(".noyes-selected, .noyes-thread");
     for (const element of new Set([...painted, ...group])) {
       const active = group.includes(element);
-      setClass({ element, name: "wheel-selected", on: active });
-      setClass({ element, name: "wheel-thread", on: active && thread });
+      setClass({ element, name: "noyes-selected", on: active });
+      setClass({ element, name: "noyes-thread", on: active && thread });
       setClass({
         element,
-        name: "wheel-thread-start",
+        name: "noyes-thread-start",
         on: active && thread && element === group[0],
       });
       setClass({
         element,
-        name: "wheel-thread-end",
+        name: "noyes-thread-end",
         on: active && thread && element === group.at(-1),
       });
     }
@@ -50,9 +50,9 @@
     const wasAligning = !!settling;
     if (settling) cancelAnimationFrame(settling.frame);
     settling = null;
-    document.documentElement.classList.remove("wheel-aligning");
+    document.documentElement.classList.remove("noyes-aligning");
     if (wasAligning) {
-      // Commit removal before the next wheel default action; otherwise Chrome
+      // Commit removal before the next noyes default action; otherwise Chrome
       // can use its previous snap target and animate the manual scroll back.
       document.documentElement.getBoundingClientRect();
       window.scrollTo({ top: scrollY, left: scrollX, behavior: "instant" });
@@ -81,7 +81,7 @@
       interrupt();
       return;
     }
-    const item = wheel.feed.read().find(byKey(state.key));
+    const item = noyes.feed.read().find(byKey(state.key));
     if (!item) return;
     // Feedback can temporarily unmount the next post before selection advances.
     // Keep that navigation request until its ID returns, within the same bound.
@@ -90,7 +90,7 @@
       return;
     }
     const top = item.head.getBoundingClientRect().top;
-    if (Math.abs(top - state.rest) <= 1 || wheel.x.overlayOpen()) return;
+    if (Math.abs(top - state.rest) <= 1 || noyes.x.overlayOpen()) return;
     if (state.corrections === SETTLE_CORRECTIONS) {
       interrupt();
       return;
@@ -112,11 +112,11 @@
   }) {
     clear();
     if (!key) return;
-    item ||= wheel.feed.read().find(byKey(key));
+    item ||= noyes.feed.read().find(byKey(key));
     selection = { key };
     paint({ item });
     if (!scroll) return;
-    document.documentElement.classList.add("wheel-aligning");
+    document.documentElement.classList.add("noyes-aligning");
     settling = {
       key,
       // The feed's ends may not reach the header; that is not a shift.
@@ -130,7 +130,7 @@
   // Select the neighbor in `direction` (1 down, -1 up). With nothing selected
   // on screen, select the current item; at an unloaded boundary, scroll a page.
   function navigate({ items, direction }) {
-    const current = wheel.feed.current({ items, selectionKey: get() });
+    const current = noyes.feed.current({ items, selectionKey: get() });
     const next =
       current &&
       (selection?.key === current.key
@@ -141,7 +141,7 @@
       return;
     }
     interrupt();
-    const { headerHeight, bottomMargin } = wheel.x.layout;
+    const { headerHeight, bottomMargin } = noyes.x.layout;
     window.scrollBy({
       top: direction * Math.max(1, innerHeight - headerHeight - bottomMargin),
       behavior: "instant",
@@ -150,7 +150,7 @@
 
   const get = () => selection?.key ?? null;
 
-  wheel.selection = Object.freeze({
+  noyes.selection = Object.freeze({
     get,
     select,
     clear,

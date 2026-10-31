@@ -1,19 +1,19 @@
-// Native actions: like, dismissal, and Undo. wheel only clicks X's own
+// Native actions: like, dismissal, and Undo. noyes only clicks X's own
 // controls; X owns the dismissal, confirmation, optional follow-up, and Undo.
 // Never hide a post locally and pretend feedback was sent.
 (() => {
   "use strict";
-  const wheel = (globalThis.__wheel ??= {});
-  if (wheel.feedback) return;
+  const noyes = (globalThis.__noyes ??= {});
+  if (noyes.feedback) return;
 
   const SKIP_NOTICE = "Skipped — feedback unavailable; nothing sent.";
   const UNDO_NOTICE = "Undo unavailable.";
   const LIKE_MISSING_NOTICE = "Like control not found.";
   const LIKE_COOLDOWN = 1500;
-  // Interrupts from input that cannot open a user menu. After them, wheel
+  // Interrupts from input that cannot open a user menu. After them, noyes
   // keeps watching for X's delayed feedback menu so it can close it. Any other
   // source (an unconsumed key, a mouse or pen press) may open a user menu, so
-  // wheel stops claiming late menus. Input inside a visible native menu hands
+  // noyes stops claiming late menus. Input inside a visible native menu hands
   // that menu to the user whatever the source.
   const KEEPS_LATE_MENU = new Set(["shortcut", "escape", "wheel", "touch"]);
 
@@ -31,7 +31,7 @@
   const byKey = (key) => (item) => item.key === key;
 
   function like({ item, items }) {
-    const { x, selection } = wheel;
+    const { x, selection } = noyes;
     const nextKey = items[items.indexOf(item) + 1]?.key;
     const post = item.target;
     const key = x.postId({ post });
@@ -47,7 +47,7 @@
     ) {
       // Already liked stays silent; no control at all means X changed.
       likeMissingNoticed = true;
-      wheel.ui.notify({ message: LIKE_MISSING_NOTICE });
+      noyes.ui.notify({ message: LIKE_MISSING_NOTICE });
     }
     if (nextKey) selection.select({ key: nextKey });
   }
@@ -58,7 +58,7 @@
   //   locating     menu captured; polling for the exact feedback item
   //   dispatched   item clicked; dismissal recorded            → idle
   //   unavailable  timed out on an unchanged post; notice      → idle
-  //   cancelled    interrupted, or the post or page changed. While wheel still
+  //   cancelled    interrupted, or the post or page changed. While noyes still
   //                owns a late menu and none was captured, keep polling until
   //                the original deadline to close one that arrives late → idle
   //
@@ -72,18 +72,18 @@
   function enter({ op, state }) {
     op.state = state;
     if (state === "opening" || state === "locating")
-      op.until = now() + wheel.x.timing.menuTimeout;
+      op.until = now() + noyes.x.timing.menuTimeout;
   }
 
   const current = (op) =>
     op.post.isConnected &&
-    wheel.x.postId({ post: op.post }) === op.key &&
-    wheel.x.onForYou();
+    noyes.x.postId({ post: op.post }) === op.key &&
+    noyes.x.onForYou();
 
   const discover = (op) =>
-    wheel.x
+    noyes.x
       .menus({ root: document })
-      .find((menu) => !op.previousMenus.has(menu) && wheel.x.visible(menu));
+      .find((menu) => !op.previousMenus.has(menu) && noyes.x.visible(menu));
 
   function cancel(op) {
     op.aborted = true;
@@ -93,14 +93,14 @@
 
   function finish(op) {
     lastOutcome = op.outcome || "cancelled";
-    if (op.outcome !== "sent") wheel.feed.release({ post: op.post });
+    if (op.outcome !== "sent") noyes.feed.release({ post: op.post });
     if (operation === op) operation = null;
     op.state = "idle";
     return NEXT;
   }
 
   function step(op) {
-    const { x, ui, feed } = wheel;
+    const { x, ui, feed } = noyes;
     switch (op.state) {
       case "opening": {
         if (op.aborted || !current(op)) return cancel(op);
@@ -171,7 +171,7 @@
   // Click X's own feedback action for one post. Resolves "sent",
   // "unavailable", or undefined when ignored, cancelled, or the post changed.
   async function send({ post }) {
-    const { x, ui } = wheel;
+    const { x, ui } = noyes;
     if (operation || !x.onForYou() || x.overlayOpen()) return undefined;
     const key = x.postId({ post });
     if (!key) return undefined;
@@ -205,7 +205,7 @@
 
   // Dismiss the current item, then move the selection on.
   async function dismiss({ item, items }) {
-    const { x, feed, selection } = wheel;
+    const { x, feed, selection } = noyes;
     const index = items.indexOf(item);
     const nextKey = items[index + 1]?.key;
     const neighbors = [items[index + 1], items[index - 1]]
@@ -237,7 +237,7 @@
     restoring = null;
     const op = operation;
     if (!op) return;
-    if (event && wheel.x.menuAt({ element: event.target })) {
+    if (event && noyes.x.menuAt({ element: event.target })) {
       // Input inside a native menu transfers control to the user, including
       // before polling has captured that menu. Do not interrupt its click.
       op.menu = null;
@@ -245,7 +245,7 @@
     }
     if (!KEEPS_LATE_MENU.has(source)) op.ownsLateMenu = false;
     op.aborted = true;
-    wheel.x.closeMenu({ menu: op.menu });
+    noyes.x.closeMenu({ menu: op.menu });
   }
 
   const anchor = (record) =>
@@ -258,21 +258,21 @@
   function pruneDismissals() {
     for (const record of dismissals.values()) {
       const identity = record.post.isConnected
-        ? wheel.x.postId({ post: record.post })
+        ? noyes.x.postId({ post: record.post })
         : null;
       const replaced =
         !record.post.isConnected &&
         record.scope?.isConnected &&
-        wheel.x
+        noyes.x
           .posts({ root: record.scope })
-          .some((post) => wheel.x.postId({ post }));
+          .some((post) => noyes.x.postId({ post }));
       if (!anchor(record) || replaced || (identity && identity !== record.key))
         dismissals.delete(record.key);
     }
   }
 
   function restore(record) {
-    const { x, ui, feed, selection } = wheel;
+    const { x, ui, feed, selection } = noyes;
     const candidates = record ? x.undoControls(record) : [];
     if (candidates.length !== 1) {
       ui.notify({ message: UNDO_NOTICE });
@@ -310,7 +310,7 @@
   };
 
   function restorePrevious({ items }) {
-    const { x, feed, selection } = wheel;
+    const { x, feed, selection } = noyes;
     if (operation || !x.onForYou()) return false;
     if (restoring) {
       const waiting =
@@ -354,7 +354,7 @@
     (restoring && now() < restoring.until ? "restoring" : "idle");
   const outcome = () => lastOutcome;
 
-  wheel.feedback = Object.freeze({
+  noyes.feedback = Object.freeze({
     like,
     dismiss,
     undo,

@@ -38,7 +38,7 @@ test("missing feedback skips without mute, block, report, or local dismissal", a
   expect(await page.evaluate(() => window.feedback)).toEqual([]);
   await expect(page.locator("article")).toHaveCount(3);
   await expect(page.getByRole("menu")).toHaveCount(0);
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/jordan/status/102",
   );
@@ -113,13 +113,13 @@ test("l likes and advances immediately, including past an already-liked post", a
   await page.keyboard.press("k");
   await page.keyboard.press("l");
   await expect.poll(() => page.evaluate(() => window.likes)).toEqual(["102"]);
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/sam/status/103",
   );
   await page.keyboard.press("j");
   await page.keyboard.press("l");
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/sam/status/103",
   );
@@ -135,7 +135,7 @@ test("n sends feedback on the selected post and advances selection", async ({
   await expect
     .poll(() => page.evaluate(() => window.feedback))
     .toEqual(["102"]);
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/sam/status/103",
   );
@@ -152,7 +152,7 @@ test("l then n advances through successive posts without navigation keys", async
   await expect
     .poll(() => page.evaluate(() => window.feedback))
     .toEqual(["102"]);
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/sam/status/103",
   );
@@ -165,7 +165,7 @@ test("holding l likes and advances only once; the last post never wraps", async 
   await page.keyboard.down("l");
   await page.keyboard.up("l");
   expect(await page.evaluate(() => window.likes)).toEqual(["101"]);
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/jordan/status/102",
   );
@@ -173,7 +173,7 @@ test("holding l likes and advances only once; the last post never wraps", async 
   await page.keyboard.press("l");
   await page.keyboard.press("l");
   expect(await page.evaluate(() => window.likes)).toEqual(["101", "103"]);
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/sam/status/103",
   );
@@ -200,7 +200,7 @@ test("unavailable feedback at the end never jumps backward", async ({
   await expect(page.getByRole("status")).toHaveText(
     "Skipped — feedback unavailable; nothing sent.",
   );
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/sam/status/103",
   );
@@ -216,7 +216,7 @@ test("regression: navigation cancellation releases the feedback menu", async ({
   await page.keyboard.press("k");
   await expect(page.getByRole("menu")).toHaveCount(0);
   await page.keyboard.press("k");
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/sam/status/103",
   );
@@ -235,7 +235,7 @@ test("regression: navigation cancellation closes a late feedback menu", async ({
     .toEqual(["101"]);
   await expect(page.getByRole("menu")).toHaveCount(0);
   await page.keyboard.press("k");
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/sam/status/103",
   );
@@ -276,7 +276,7 @@ test("regression: invisible dialogs do not block feedback", async ({
   await expect
     .poll(() => page.evaluate(() => window.feedback))
     .toEqual(["101"]);
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/jordan/status/102",
   );
@@ -426,20 +426,20 @@ test("drift: unrecognizable posts show one layout notice", async ({ page }) => {
       .querySelectorAll("article")
       .forEach((post) => post.removeAttribute("data-testid")),
   );
-  const notice = page.locator(".wheel-notice");
+  const notice = page.locator(".noyes-notice");
   await expect(notice).toHaveText(
     "noyes can't read this feed layout — shortcuts are off until noyes is updated.",
     { timeout: 5000 },
   );
   await page.keyboard.press("k");
-  await expect(page.locator(".wheel-selected")).toHaveCount(0);
+  await expect(page.locator(".noyes-selected")).toHaveCount(0);
 });
 
 test("drift: a readable feed never shows the layout notice", async ({
   page,
 }) => {
   await page.waitForTimeout(2500);
-  await expect(page.locator(".wheel-notice")).toHaveCount(0);
+  await expect(page.locator(".noyes-notice")).toHaveCount(0);
 });
 
 test("drift: a post with no like control says so once", async ({ page }) => {
@@ -449,7 +449,7 @@ test("drift: a post with no like control says so once", async ({ page }) => {
       .forEach((like) => like.remove()),
   );
   await page.keyboard.press("l");
-  await expect(page.locator(".wheel-notice")).toHaveText(
+  await expect(page.locator(".noyes-notice")).toHaveText(
     "Like control not found.",
   );
   expect(await page.evaluate(() => window.likes)).toEqual([]);
@@ -461,10 +461,10 @@ test("drift: an already liked post stays silent", async ({ page }) => {
     like.dataset.testid = "unlike";
   });
   await page.keyboard.press("l");
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/jordan/status/102",
   );
-  await expect(page.locator(".wheel-notice")).toHaveCount(0);
+  await expect(page.locator(".noyes-notice")).toHaveCount(0);
   expect(await page.evaluate(() => window.likes)).toEqual([]);
 });

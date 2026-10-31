@@ -140,12 +140,12 @@
       <pre id="detail"></pre>
     </section>
   </main>
-  <script id="wheel-data" type="application/json">
-    __WHEEL_DATA__
+  <script id="noyes-data" type="application/json">
+    __NOYES_DATA__
   </script>
   <script>
     "use strict";
-    const data = JSON.parse(document.querySelector("#wheel-data").textContent);
+    const data = JSON.parse(document.querySelector("#noyes-data").textContent);
     const records = data.records;
     const seek = document.querySelector("#seek");
     const canvas = document.querySelector("#screen");

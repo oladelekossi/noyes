@@ -1,17 +1,17 @@
-// wheel's own page UI: the transient notice and layout CSS variables.
+// noyes's own page UI: the transient notice and layout CSS variables.
 (() => {
   "use strict";
-  const wheel = (globalThis.__wheel ??= {});
-  if (wheel.ui) return;
+  const noyes = (globalThis.__noyes ??= {});
+  if (noyes.ui) return;
 
   const NOTICE_DURATION = 4500;
   let noticeTimer;
 
   function notify({ message }) {
-    let notice = document.querySelector(".wheel-notice");
+    let notice = document.querySelector(".noyes-notice");
     if (!notice) {
       notice = document.createElement("div");
-      notice.className = "wheel-notice";
+      notice.className = "noyes-notice";
       notice.setAttribute("role", "status");
       notice.setAttribute("aria-live", "polite");
       document.body.append(notice);
@@ -22,16 +22,16 @@
   }
 
   function clearNotice() {
-    document.querySelector(".wheel-notice")?.remove();
+    document.querySelector(".noyes-notice")?.remove();
   }
 
   // X's header height has one home, x.layout; content.css reads it from here.
   function setLayoutVars({ layout }) {
     document.documentElement.style.setProperty(
-      "--wheel-header-height",
+      "--noyes-header-height",
       `${layout.headerHeight}px`,
     );
   }
 
-  wheel.ui = Object.freeze({ notify, clearNotice, setLayoutVars });
+  noyes.ui = Object.freeze({ notify, clearNotice, setLayoutVars });
 })();

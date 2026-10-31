@@ -1,6 +1,6 @@
 // Enforces the module layering in docs/architecture.md:
 //   Rule A: only extension/x.js may name X's selectors, labels, or URL shapes.
-//   Rule B: each file may reference only the wheel.* modules listed below.
+//   Rule B: each file may reference only the noyes.* modules listed below.
 // Exit 0: clean. Exit 1: violations. Exit 2: setup or input error.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -17,10 +17,10 @@ const ALLOWED = {
 };
 const X_KNOWLEDGE =
   /data-testid|\[role=|\/status\/|not interested|placementTracking|promotedIndicator/i;
-const REFERENCE = /(?<![\w$])(?:__)?wheel\.([A-Za-z_$][\w$]*)/g;
-// `const { feed, x } = wheel;` references feed and x.
+const REFERENCE = /(?<![\w$])(?:__)?noyes\.([A-Za-z_$][\w$]*)/g;
+// `const { feed, x } = noyes;` references feed and x.
 const DESTRUCTURE =
-  /\{([^{}]*)\}\s*=\s*(?:globalThis\.)?(?:__)?wheel(?![\w$.])/g;
+  /\{([^{}]*)\}\s*=\s*(?:globalThis\.)?(?:__)?noyes(?![\w$.])/g;
 
 const moduleName = (file) => file.replace(/\.js$/, "");
 const lines = (source) => source.split("\n");
@@ -65,7 +65,7 @@ function violations({ directory, file }) {
     ];
     for (const name of names)
       if (!allowed.has(name))
-        found.push(`${at}: ${file} may not use wheel.${name}`);
+        found.push(`${at}: ${file} may not use noyes.${name}`);
   }
   return found;
 }

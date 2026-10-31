@@ -1,10 +1,10 @@
 // The feed model: X's posts as navigation items. A conversation joined by
-// X's avatar rail is one item; ads, quoted posts, and posts wheel just
+// X's avatar rail is one item; ads, quoted posts, and posts noyes just
 // dismissed are not items.
 (() => {
   "use strict";
-  const wheel = (globalThis.__wheel ??= {});
-  if (wheel.feed) return;
+  const noyes = (globalThis.__noyes ??= {});
+  if (noyes.feed) return;
 
   // Dismissed posts stay out of navigation until X replaces or removes them.
   // post → { key, time }: `time` is followed across same-ID rerenders.
@@ -15,7 +15,7 @@
   // → [{ key, head, target, articles }] in DOM order. `head` is the first
   // article of a conversation, `target` the last (the one actions apply to).
   function read() {
-    const x = wheel.x;
+    const x = noyes.x;
     const column = x.column();
     if (!column) return [];
     const items = [];
@@ -43,7 +43,7 @@
   }
 
   function inViewport({ item }) {
-    const { headerHeight, bottomMargin } = wheel.x.layout;
+    const { headerHeight, bottomMargin } = noyes.x.layout;
     return (
       item.target.getBoundingClientRect().bottom > headerHeight &&
       item.head.getBoundingClientRect().top < innerHeight - bottomMargin
@@ -58,7 +58,7 @@
   }
 
   function suppress({ post, key }) {
-    dismissedPosts.set(post, { key, time: wheel.x.timestamp({ post }) });
+    dismissedPosts.set(post, { key, time: noyes.x.timestamp({ post }) });
   }
 
   function release({ post }) {
@@ -73,7 +73,7 @@
   // timestamp through the mutation batch; a removal without replacement is
   // the native result transition, even if Undo restores it in the same batch.
   function reconcile({ records }) {
-    const x = wheel.x;
+    const x = noyes.x;
     for (const [post, dismissed] of dismissedPosts) {
       if (
         !post.isConnected ||
@@ -103,7 +103,7 @@
     }
   }
 
-  wheel.feed = Object.freeze({
+  noyes.feed = Object.freeze({
     read,
     inViewport,
     current,

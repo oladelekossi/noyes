@@ -14,7 +14,7 @@ export async function inject({ page }) {
     await page.addScriptTag({ path: resolve("extension", file) });
 }
 
-// Serves the synthetic feed at x.com/home, optionally with wheel injected.
+// Serves the synthetic feed at x.com/home, optionally with noyes injected.
 export async function openFeed({ page, injected = true }) {
   await page.route("https://x.com/**", (route) =>
     route.fulfill({ contentType: "text/html", body: fixture }),

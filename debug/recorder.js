@@ -1,11 +1,11 @@
-// Development-only flight recorder, loaded in wheel's isolated world before
+// Development-only flight recorder, loaded in noyes's isolated world before
 // main installs its input listeners. No text, URLs, raw IDs, or network data.
 (() => {
   "use strict";
-  const wheel = globalThis.__wheel;
-  if (wheel.recorder) return;
-  const REPORT = "__WHEEL_REPORT_TEMPLATE__";
-  const BUILD = "__WHEEL_BUILD__";
+  const noyes = globalThis.__noyes;
+  if (noyes.recorder) return;
+  const REPORT = "__NOYES_REPORT_TEMPLATE__";
+  const BUILD = "__NOYES_BUILD__";
   const MAX_RECORDS = 18000;
   const MAX_DURATION = 10 * 60 * 1000;
   const MAX_POSTS = 250;
@@ -52,16 +52,16 @@
   };
 
   function snapshot() {
-    const x = wheel.x;
-    const items = wheel.feed.read();
-    const selected = wheel.selection.get();
+    const x = noyes.x;
+    const items = noyes.feed.read();
+    const selected = noyes.selection.get();
     const item = items.find((entry) => entry.key === selected);
     const root = x.column();
     const posts = root ? x.posts({ root }) : [];
     const forYou = x.onForYou();
-    const inViewport = !!item && wheel.feed.inViewport({ item });
+    const inViewport = !!item && noyes.feed.inViewport({ item });
     const painted = !!item?.articles.every((post) =>
-      post.classList.contains("wheel-selected"),
+      post.classList.contains("noyes-selected"),
     );
     const appearance = !!item?.articles.every((post) => {
       const style = getComputedStyle(post);
@@ -85,14 +85,14 @@
       typing: x.typingContext({ event: { composedPath: () => [] } }),
       focused: document.hasFocus(),
       hidden: document.hidden,
-      pendingFeedback: !!wheel.feedback.pending(),
-      feedbackState: wheel.feedback.state(),
-      feedbackOutcome: wheel.feedback.outcome(),
+      pendingFeedback: !!noyes.feedback.pending(),
+      feedbackState: noyes.feedback.state(),
+      feedbackOutcome: noyes.feedback.outcome(),
       menus: x
         .menus({ root: document })
         .filter(x.visible)
         .map((menu) => x.menuDiagnostics({ menu })),
-      aligning: document.documentElement.classList.contains("wheel-aligning"),
+      aligning: document.documentElement.classList.contains("noyes-aligning"),
       scroll: { x: Math.round(scrollX), y: Math.round(scrollY) },
       viewport: { width: innerWidth, height: innerHeight },
       headerHeight: x.layout.headerHeight,
@@ -111,10 +111,10 @@
           id: alias(key),
           node: nodeAlias(post),
           rect: rect(post),
-          selected: post.classList.contains("wheel-selected"),
-          thread: post.classList.contains("wheel-thread"),
+          selected: post.classList.contains("noyes-selected"),
+          thread: post.classList.contains("noyes-thread"),
           visible: x.visible(post),
-          suppressed: wheel.feed.isSuppressed({ post, key }),
+          suppressed: noyes.feed.isSuppressed({ post, key }),
           outline: {
             style: style.outlineStyle,
             width: style.outlineWidth,
@@ -223,7 +223,7 @@
 
   function data() {
     return {
-      format: "wheel-flight-recorder-v1",
+      format: "noyes-flight-recorder-v1",
       build: BUILD,
       version: globalThis.chrome?.runtime?.getManifest?.().version || "fixture",
       startedAt,
@@ -242,7 +242,7 @@
   function download() {
     if (!records.length || active) return;
     const json = JSON.stringify(data()).replaceAll("<", "\\u003c");
-    const html = REPORT.replace("__WHEEL_DATA__", () => json);
+    const html = REPORT.replace("__NOYES_DATA__", () => json);
     const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -262,7 +262,7 @@
   // The functions themselves are frozen in production. Replace only the
   // debug build's namespace entries, preserving receiver, result and errors.
   function instrument({ module, methods }) {
-    const original = wheel[module];
+    const original = noyes[module];
     const wrapped = { ...original };
     for (const name of methods) {
       const method = original[name];
@@ -290,7 +290,7 @@
         }
       };
     }
-    wheel[module] = Object.freeze(wrapped);
+    noyes[module] = Object.freeze(wrapped);
   }
 
   for (const options of [
@@ -314,7 +314,7 @@
           event.stopImmediatePropagation();
           return;
         }
-        if (!active || wheel.x.typingContext({ event })) return;
+        if (!active || noyes.x.typingContext({ event })) return;
         const detail = {
           key: SHORTCUTS.has(event.key) ? event.key : "other",
           repeat: event.repeat,
@@ -328,7 +328,7 @@
         };
         capture({ type: `${type}-before`, detail });
         // A microtask can run between native event listeners. Use a task so
-        // wheel's later capture listener has already had a chance to consume it.
+        // noyes's later capture listener has already had a chance to consume it.
         setTimeout(
           () =>
             capture({
@@ -365,7 +365,7 @@
 
   function mount() {
     host = document.createElement("div");
-    host.id = "wheel-debug-recorder";
+    host.id = "noyes-debug-recorder";
     const shadow = host.attachShadow({ mode: "open" });
     shadow.innerHTML = `<style>
       :host { all: initial; position: fixed; right: 16px; bottom: 16px;
@@ -400,7 +400,7 @@
     event.preventDefault();
     event.returnValue = "";
   });
-  wheel.recorder = Object.freeze({ data });
+  noyes.recorder = Object.freeze({ data });
   if (document.readyState === "loading")
     document.addEventListener("DOMContentLoaded", mount, { once: true });
   else mount();

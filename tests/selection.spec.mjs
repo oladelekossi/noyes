@@ -18,7 +18,7 @@ async function navigateToSecondPost(page) {
   });
   await page.keyboard.press("k");
   await page.keyboard.press("k");
-  const selected = page.locator(".wheel-selected");
+  const selected = page.locator(".noyes-selected");
   await expect.poll(() => top(selected)).toBe(100);
   return selected;
 }
@@ -30,20 +30,20 @@ test("green outline surrounds the whole post in light and dark layouts without e
 }) => {
   const testInfo = test.info();
   await page.keyboard.press("k");
-  const selected = page.locator("article.wheel-selected");
+  const selected = page.locator("article.noyes-selected");
   for (const theme of ["light", "dark"]) {
     if (theme === "dark")
       await page.evaluate(() => document.body.classList.add("dark"));
     await expect(selected).toHaveCSS("outline", "rgb(34, 197, 94) solid 2px");
     await expect(selected).toHaveCSS("outline-offset", "-2px");
-    await page.screenshot({ path: testInfo.outputPath(`wheel-${theme}.png`) });
+    await page.screenshot({ path: testInfo.outputPath(`noyes-${theme}.png`) });
   }
 });
 
 test("k selects the first visible post then advances; j moves back without wrapping", async ({
   page,
 }) => {
-  const selected = page.locator(".wheel-selected a:has(time)");
+  const selected = page.locator(".noyes-selected a:has(time)");
   await page.keyboard.press("k");
   await expect(selected).toHaveAttribute("href", "/alex/status/101");
   await page.keyboard.press("k");
@@ -60,16 +60,16 @@ test("keyboard selection follows new posts and resets after recycling", async ({
   for (let i = 0; i < 3; i++) await page.keyboard.press("k");
   await page.evaluate(() => window.addPost({ id: "104" }));
   await page.keyboard.press("k");
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/alex/status/104",
   );
   await page.evaluate(
     () =>
-      (document.querySelector(".wheel-selected time").closest("a").href =
+      (document.querySelector(".noyes-selected time").closest("a").href =
         "/alex/status/999"),
   );
-  await expect(page.locator(".wheel-selected")).toHaveCount(0);
+  await expect(page.locator(".noyes-selected")).toHaveCount(0);
 });
 
 test("scrolling past a selection makes l target the visible post", async ({
@@ -93,14 +93,14 @@ test("selected post has a visible marker", async ({ page }) => {
   const testInfo = test.info();
   await page.keyboard.press("k");
   await page.keyboard.press("k");
-  await expect(page.locator(".wheel-selected")).toHaveCSS(
+  await expect(page.locator(".noyes-selected")).toHaveCSS(
     "outline",
     "rgb(34, 197, 94) solid 2px",
   );
-  await page.screenshot({ path: testInfo.outputPath("wheel-keyboard.png") });
+  await page.screenshot({ path: testInfo.outputPath("noyes-keyboard.png") });
 });
 
-test("wheel suppresses the feed focus ring but preserves focus and normal control outlines", async ({
+test("noyes suppresses the feed focus ring but preserves focus and normal control outlines", async ({
   page,
 }) => {
   const feed = page.locator("[data-testid=primaryColumn]");
@@ -113,7 +113,7 @@ test("wheel suppresses the feed focus ring but preserves focus and normal contro
   await page.keyboard.press("k");
   await expect(feed).toBeFocused();
   await expect(feed).toHaveCSS("outline-style", "none");
-  await expect(page.locator("article.wheel-selected")).toHaveCSS(
+  await expect(page.locator("article.noyes-selected")).toHaveCSS(
     "outline",
     "rgb(34, 197, 94) solid 2px",
   );
@@ -125,7 +125,7 @@ test("wheel suppresses the feed focus ring but preserves focus and normal contro
     page.getByRole("tab", { name: "For you", exact: true }),
   ).toHaveCSS("outline-color", "rgb(0, 0, 255)");
   await page.getByRole("tab", { name: "Following", exact: true }).click();
-  await expect(page.locator(".wheel-selected")).toHaveCount(0);
+  await expect(page.locator(".noyes-selected")).toHaveCount(0);
   await feed.focus();
   await page.keyboard.press("ArrowDown");
   await expect(feed).toHaveCSS("outline-style", "solid");
@@ -138,14 +138,14 @@ test("selection survives class rewrites and replacement of the same tweet", asyn
   await page.keyboard.press("k");
   await page.evaluate(
     () =>
-      (document.querySelector(".wheel-selected").className = "x-rendered-post"),
+      (document.querySelector(".noyes-selected").className = "x-rendered-post"),
   );
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/jordan/status/102",
   );
   await page.evaluate(() => {
-    const post = document.querySelector(".wheel-selected");
+    const post = document.querySelector(".noyes-selected");
     const replacement = post.cloneNode(true);
     replacement.className = "x-rendered-post";
     post.remove();
@@ -154,12 +154,12 @@ test("selection survives class rewrites and replacement of the same tweet", asyn
       80,
     );
   });
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/jordan/status/102",
   );
   await page.keyboard.press("k");
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/sam/status/103",
   );
@@ -179,7 +179,7 @@ test("liking advances by tweet ID even if X replaces the next article", async ({
   });
   await page.keyboard.press("l");
   await expect.poll(() => page.evaluate(() => window.likes)).toEqual(["101"]);
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/jordan/status/102",
   );
@@ -201,7 +201,7 @@ test("like advancement waits for a temporarily unmounted next post and aligns it
   });
   await page.keyboard.press("l");
   await expect.poll(() => page.evaluate(() => window.likes)).toEqual(["101"]);
-  const selected = page.locator(".wheel-selected");
+  const selected = page.locator(".noyes-selected");
   await expect(selected.locator("a:has(time)")).toHaveAttribute(
     "href",
     "/jordan/status/102",
@@ -238,7 +238,7 @@ test("manual input cancels navigation waiting for a post to remount", async ({
   await page.keyboard.press("l");
   await page.keyboard.press("Escape");
   await page.evaluate(() => window.restoreNext());
-  await expect(page.locator(".wheel-selected")).toHaveCount(1);
+  await expect(page.locator(".noyes-selected")).toHaveCount(1);
   await page.waitForTimeout(250);
   expect(await page.evaluate(() => window.scrolls)).toBe(0);
 });
@@ -253,7 +253,7 @@ test("holding like does not cancel alignment after a delayed feed shift", async 
     document.querySelector("#feed").style.transform = "translateY(-180px)";
   });
   await page.keyboard.up("l");
-  await expect.poll(() => top(page.locator(".wheel-selected"))).toBe(100);
+  await expect.poll(() => top(page.locator(".noyes-selected"))).toBe(100);
   expect(await page.evaluate(() => window.likes)).toEqual(["101"]);
 });
 
@@ -283,22 +283,22 @@ test("dismissal keeps the next header aligned after delayed collapse and focus r
     .poll(() => page.evaluate(() => window.feedback))
     .toEqual(["101"]);
   await page.waitForTimeout(350);
-  await expect.poll(() => top(page.locator(".wheel-selected"))).toBe(100);
+  await expect.poll(() => top(page.locator(".noyes-selected"))).toBe(100);
   await page.keyboard.press("k");
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/sam/status/103",
   );
-  await expect.poll(() => top(page.locator(".wheel-selected"))).toBe(100);
+  await expect.poll(() => top(page.locator(".noyes-selected"))).toBe(100);
 });
 
-// Selects the second post below the header and counts wheel's scroll commands.
+// Selects the second post below the header and counts noyes's scroll commands.
 test("navigation corrects a feed shift before exposing the displaced post", async ({
   page,
 }) => {
   const selected = await navigateToSecondPost(page);
   // X positions feed cells with transforms. Re-measuring a post above moves the
-  // selected post after wheel's scroll, and browser scroll anchoring ignores it.
+  // selected post after noyes's scroll, and browser scroll anchoring ignores it.
   await page.evaluate(() => {
     document.querySelector("#feed").style.transform = "translateY(-180px)";
   });
@@ -324,7 +324,7 @@ test("navigation stays aligned across X's delayed scroll compensation", async ({
       );
       tops.push(
         Math.round(
-          document.querySelector(".wheel-selected").getBoundingClientRect().top,
+          document.querySelector(".noyes-selected").getBoundingClientRect().top,
         ),
       );
     }
@@ -353,7 +353,7 @@ test("a post-navigation viewport jump never stays displaced across rendered fram
       );
       tops.push(
         Math.round(
-          document.querySelector(".wheel-selected").getBoundingClientRect().top,
+          document.querySelector(".noyes-selected").getBoundingClientRect().top,
         ),
       );
     }
@@ -379,7 +379,7 @@ test("navigation stops correcting a feed that keeps moving the post", async ({
     addEventListener("scroll", () => requestAnimationFrame(shift));
     shift();
   });
-  await expect(page.locator("html")).not.toHaveClass(/wheel-aligning/);
+  await expect(page.locator("html")).not.toHaveClass(/noyes-aligning/);
   const scrolls = await page.evaluate(() => window.scrolls);
   expect(scrolls).toBeLessThanOrEqual(5);
   await page.waitForTimeout(700);
@@ -405,7 +405,7 @@ test("releasing navigation preserves scrolling inside a nested control", async (
     .poll(() => page.locator("#nested-scroll").evaluate((e) => e.scrollTop))
     .toBeGreaterThan(0);
   expect(await page.evaluate(() => scrollY)).toBe(before);
-  await expect(page.locator("html")).not.toHaveClass(/wheel-aligning/);
+  await expect(page.locator("html")).not.toHaveClass(/noyes-aligning/);
 });
 
 test("navigation yields to manual scrolling and stops watching once the feed settles", async ({
@@ -413,7 +413,7 @@ test("navigation yields to manual scrolling and stops watching once the feed set
 }) => {
   const selected = await navigateToSecondPost(page);
   await page.keyboard.press("k");
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/sam/status/103",
   );
@@ -430,7 +430,7 @@ test("navigation yields to manual scrolling and stops watching once the feed set
   // Later page updates belong to X: restoring the marker never scrolls.
   await page.evaluate(() => {
     window.scrollBy(0, 64);
-    document.querySelector(".wheel-selected").className = "x-rendered-post";
+    document.querySelector(".noyes-selected").className = "x-rendered-post";
   });
   await expect(selected).toHaveCount(1);
   await page.waitForTimeout(600);
@@ -444,7 +444,7 @@ test("layout: the header height reaches CSS from the adapter", async ({
   expect(
     await page.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue(
-        "--wheel-header-height",
+        "--noyes-header-height",
       ),
     ),
   ).toBe("100px");

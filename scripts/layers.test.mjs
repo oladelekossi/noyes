@@ -19,7 +19,7 @@ after(() => {
 
 // A copy of the real extension directory, optionally edited.
 function tree({ edit = () => {} } = {}) {
-  const temp = mkdtempSync(join(tmpdir(), "wheel-layers-test-"));
+  const temp = mkdtempSync(join(tmpdir(), "noyes-layers-test-"));
   temps.push(temp);
   cpSync(resolve("extension"), join(temp, "extension"), { recursive: true });
   edit({ directory: join(temp, "extension") });
@@ -64,14 +64,14 @@ test("a reference up the layer order fails", () => {
       const path = join(directory, "feed.js");
       writeFileSync(
         path,
-        `globalThis.__wheel.feed = { read: () => wheel.feedback };\n${readFileSync(path, "utf8")}`,
+        `globalThis.__noyes.feed = { read: () => noyes.feedback };\n${readFileSync(path, "utf8")}`,
       );
     },
   });
   assert.equal(result.status, 1);
   assert.match(
     result.stdout,
-    /extension\/feed\.js:1: feed\.js may not use wheel\.feedback/,
+    /extension\/feed\.js:1: feed\.js may not use noyes\.feedback/,
   );
 });
 
@@ -81,13 +81,13 @@ test("a destructured reference up the layer order fails", () => {
       const path = join(directory, "feed.js");
       writeFileSync(
         path,
-        `${readFileSync(path, "utf8")}const { selection, x } = globalThis.__wheel;\n`,
+        `${readFileSync(path, "utf8")}const { selection, x } = globalThis.__noyes;\n`,
       );
     },
   });
   assert.equal(result.status, 1);
-  assert.match(result.stdout, /feed\.js may not use wheel\.selection/);
-  assert.doesNotMatch(result.stdout, /wheel\.x\b/);
+  assert.match(result.stdout, /feed\.js may not use noyes\.selection/);
+  assert.doesNotMatch(result.stdout, /noyes\.x\b/);
 });
 
 test("a script on disk but missing from the manifest is a setup error", () => {

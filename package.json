@@ -1,8 +1,16 @@
 {
   "name": "noyes",
   "version": "0.2.2",
-  "private": true,
   "description": "Fine-tune your X feed, one keystroke at a time.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oladelekossi/noyes.git"
+  },
+  "homepage": "https://github.com/oladelekossi/noyes#readme",
+  "bugs": {
+    "url": "https://github.com/oladelekossi/noyes/issues"
+  },
   "scripts": {
     "test": "playwright test",
     "test:unit": "node --test \"tests/unit/*.test.mjs\"",

@@ -3,8 +3,8 @@
 // below (and, rarely, in a lookup here) — never in the other modules.
 (() => {
   "use strict";
-  const wheel = (globalThis.__wheel ??= {});
-  if (wheel.x) return;
+  const noyes = (globalThis.__noyes ??= {});
+  if (noyes.x) return;
 
   // Each `candidates` list is ordered; a lookup uses the first match. Add a
   // second entry only when the live probe shows X shipping a new form
@@ -50,7 +50,7 @@
     button: 'button, [role="button"]',
   });
 
-  // X's sticky header height and the bottom margin wheel keeps clear.
+  // X's sticky header height and the bottom margin noyes keeps clear.
   const layout = Object.freeze({ headerHeight: 100, bottomMargin: 32 });
   // Poll only during a user-requested action, without automatic retry.
   const timing = Object.freeze({
@@ -200,7 +200,7 @@
   }
 
   // "like" | "liked" | "missing": missing means X no longer shows either
-  // control where wheel expects it, which is drift rather than a liked post.
+  // control where noyes expects it, which is drift rather than a liked post.
   function likeState({ post }) {
     if (own({ post, selectors: contract.like.candidates })) return "like";
     if (own({ post, selectors: contract.like.liked })) return "liked";
@@ -291,7 +291,7 @@
           (element.isContentEditable || element.closest(contract.typing)),
       );
 
-  // Counts of what wheel recognizes under `root`, for drift detection and the
+  // Counts of what noyes recognizes under `root`, for drift detection and the
   // live probe. Counts only: never content, handles, or IDs.
   function health({ root }) {
     const found = posts({ root });
@@ -312,7 +312,7 @@
     };
   }
 
-  wheel.x = Object.freeze({
+  noyes.x = Object.freeze({
     contract,
     layout,
     timing,

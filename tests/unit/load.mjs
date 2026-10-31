@@ -1,5 +1,5 @@
 // Loads extension scripts the way Chrome does: classic scripts, in order, in
-// one shared global. Pre-seed `globals.__wheel` with fakes for the modules a
+// one shared global. Pre-seed `globals.__noyes` with fakes for the modules a
 // test does not load; the real ones are simply left out of `files`.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -16,7 +16,7 @@ export function load({ files, globals = {} }) {
     const path = resolve("extension", file);
     vm.runInContext(readFileSync(path, "utf8"), context, { filename: path });
   }
-  return context.__wheel;
+  return context.__noyes;
 }
 
 // A manual clock: time moves only when a test calls `tick`.

@@ -21,4 +21,4 @@ npm pkg set 'files[0]=dist' 'files[1]=src' 'files[2]=bin' 'files[3]=LICENSE' 'fi
 npm pack --ignore-scripts
 ```
 
-The packaging-only changes add the root license and a `files` allowlist to include compiled output. No upstream rules or analyzer code were changed. Wheel's npm lockfile records the tarball integrity and exact installed dependency versions.
+The packaging-only changes add the root license and a `files` allowlist to include compiled output. No upstream rules or analyzer code were changed. noyes's npm lockfile records the tarball integrity and exact installed dependency versions.

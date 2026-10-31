@@ -13,7 +13,7 @@ Where this plan and the code differ, the code and its tests are right:
 - **`menuInput` is not a separate source.** `feedback.interrupt({ source, event })` detects input inside a visible native menu from `event`, for any source.
 - **The document-level cancel listener is permanent** (registered by `input.js`, active only while a dismissal is pending) instead of being added per operation. Consumed shortcuts still never reach it.
 - **Drift condition (§3.5)** uses `x.health`: ≥ 3 articles in the column and zero recognized posts or zero post IDs, on two consecutive once-a-second checks. Zero navigation items alone was not used, because a feed of only ads or dismissed posts would trip it.
-- **Layer checker** also catches destructured references (`const { feed } = wheel`), which Rule B's `wheel.<name>` pattern would miss, and Rule A applies to comments too.
+- **Layer checker** also catches destructured references (`const { feed } = noyes`), which Rule B's `noyes.<name>` pattern would miss, and Rule A applies to comments too.
 - **Unit command** is `node --test "tests/unit/*.test.mjs"`; `node --test tests/unit/` fails on Node 22. `tests/unit/load.mjs` lets tests override `performance`/`setTimeout` with a manual clock.
 - **`testIgnore` for unit tests** was added in Phase 3, not 5: Playwright's default match already picks up `*.test.mjs`.
 - **Live probe:** rows 11–14 are `not probed` (each needs a click); row 14 cannot be read without a dismissal. Rows 6 and 8 report `not observed` when no ad or adjacent-cell conversation is on screen. Row 16 compares the bottom of the For You tab's sticky header with `x.layout.headerHeight` (±8 px). `--fixture` runs the probe against the synthetic feed to check the probe itself.
@@ -39,8 +39,8 @@ Fixed constraints. A phase that violates one is wrong, however elegant.
 
 - One IIFE in `extension/content.js` with nine module-level mutable variables (`dismissedPosts`, `handledKeys`, `pendingLikes`, `scheduled`, `noticeTimer`, `selection`, `settling`, `pendingFeedback`, `lastDismissal`) shared by every function. Comment banners mark six sections: DOM helpers, feed model, selection/alignment, native actions, shortcuts, page observation.
 - Three concurrent processes cancel each other from six call sites: `handleShortcut`, `releaseForWheel`, the touch/pointer listeners, the second `keydown` listener, the `cancel` closure inside `dismiss()`, and the `finally` block of `dismiss()` (which also polls). `dismiss()` is ~110 lines of async `try/catch/finally`.
-- About 65 Playwright tests in three spec files; `tests/wheel.spec.mjs` is 1386 lines. No unit tests of extension logic. `node --test` is used only for `scripts/vet.test.mjs`.
-- `tests/wheel.spec.mjs` `start()` and `tests/extension.spec.mjs` assert `.wheel-button` has count 0. No code creates that class; the assertion cannot fail. Remove in Phase 5.
+- About 65 Playwright tests in three spec files; `tests/noyes.spec.mjs` is 1386 lines. No unit tests of extension logic. `node --test` is used only for `scripts/vet.test.mjs`.
+- `tests/noyes.spec.mjs` `start()` and `tests/extension.spec.mjs` assert `.wheel-button` has count 0. No code creates that class; the assertion cannot fail. Remove in Phase 5.
 - `vet` selects every tracked/unignored `.js`/`.mjs`, so new files under `extension/` are checked automatically. `scripts/package.mjs` zips every top-level file in `extension/`, so new runtime files ship automatically and nothing else may live there.
 
 ### 2.1 Inventory of X assumptions in `content.js`
@@ -84,7 +84,7 @@ extension/
   feed.js            posts → navigation items; viewport; neighbors; dismissal suppression
   selection.js       selection identity; painting; align/settle process
   feedback.js        like; Not-interested state machine; undo
-  input.js           key/wheel/touch capture → commands and interrupts
+  input.js           key/noyes/touch capture → commands and interrupts
   main.js            load guard; MutationObserver; scheduling; wiring
 ```
 
@@ -94,9 +94,9 @@ Mechanism, no tooling: Chrome injects the files listed in a `content_scripts` en
 // top of every file
 (() => {
   "use strict";
-  const wheel = (globalThis.__wheel ??= {});
-  if (wheel.x) return; // each file is idempotent on re-injection
-  wheel.x = Object.freeze({ ... });
+  const noyes = (globalThis.__noyes ??= {});
+  if (noyes.x) return; // each file is idempotent on re-injection
+  noyes.x = Object.freeze({ ... });
 })();
 ```
 
@@ -107,7 +107,7 @@ Mechanism, no tooling: Chrome injects the files listed in a `content_scripts` en
 Strictly one direction. A file may call only files above it in this list.
 
 ```
-x.js  ui.js        ← base: no wheel.* dependencies
+x.js  ui.js        ← base: no noyes.* dependencies
 feed.js            ← x
 selection.js       ← x, feed
 feedback.js        ← x, ui, feed, selection
@@ -124,7 +124,7 @@ Consequences:
 Enforcement — `planned`, Phase 2: `scripts/layers.mjs`, run by `npm run check` after vet.
 
 - Rule A: for each file in `extension/*.js` other than `x.js`, the source must not match `/data-testid|\[role=|\/status\/|not interested|placementTracking|promotedIndicator/i`. A violation prints the file, line, and the matching text, exit 1.
-- Rule B: for each file, collect `wheel.<name>` references; each referenced name must be listed as allowed for that file in a table at the top of `layers.mjs` that mirrors the list above. Violation prints file, line, name, exit 1.
+- Rule B: for each file, collect `noyes.<name>` references; each referenced name must be listed as allowed for that file in a table at the top of `layers.mjs` that mirrors the list above. Violation prints file, line, name, exit 1.
 - Exit 0 prints `layers: N files checked; no violations.`
 - Exit 2 for setup errors (missing manifest, file listed in manifest absent on disk, file on disk missing from manifest).
 
@@ -139,7 +139,7 @@ Owns: no runtime state. A frozen `contract` table and pure lookup functions.
 Provides:
 
 ```js
-wheel.x = {
+noyes.x = {
   contract,                          // see below
   onForYou(),                        // row 4
   column(),                          // row 3 → Element | null
@@ -201,7 +201,7 @@ Must not: hold state across calls; scroll; click anything except through `closeM
 
 The pixel heuristic in row 8 is the most fragile item in the inventory and the only one that is not a selector. It stays a function in `x.js` with its thresholds as named constants in `contract.rail` so the probe can report which threshold failed on a live conversation.
 
-Layout and CSS (rows 16–17): `ui.js` writes `document.documentElement.style.setProperty("--wheel-header-height", x.layout.headerHeight + "px")` at start. `content.css` replaces its two literal `100px` with `var(--wheel-header-height, 100px)`. The header height then has one home. The `overflow: clip` override stays in CSS with its existing comment; it is harmless if X stops using `overflow: hidden`.
+Layout and CSS (rows 16–17): `ui.js` writes `document.documentElement.style.setProperty("--noyes-header-height", x.layout.headerHeight + "px")` at start. `content.css` replaces its two literal `100px` with `var(--noyes-header-height, 100px)`. The header height then has one home. The `overflow: clip` override stays in CSS with its existing comment; it is harmless if X stops using `overflow: hidden`.
 
 #### ui.js
 
@@ -220,7 +220,7 @@ suppress({ post, key }) / release({ post }) / isSuppressed({ post, key });
 reconcile({ records }); // reconcileDismissals() today
 ```
 
-Must not: scroll, paint, or know about keys. All DOM queries go through `wheel.x`.
+Must not: scroll, paint, or know about keys. All DOM queries go through `noyes.x`.
 
 #### selection.js
 
@@ -294,7 +294,7 @@ Must not: read `event.key` to decide anything beyond the `source` passed in; tou
 
 #### input.js
 
-Owns: `handledKeys`. Provides `install()` which registers today's capture-phase listeners (`keydown` ×2, `keypress`, `keyup`, `wheel`, `touchstart`, `pointerdown`, `blur`). Translates raw events into exactly two kinds of call:
+Owns: `handledKeys`. Provides `install()` which registers today's capture-phase listeners (`keydown` ×2, `keypress`, `keyup`, `noyes`, `touchstart`, `pointerdown`, `blur`). Translates raw events into exactly two kinds of call:
 
 - `interrupt({ source })` on both `selection` and `feedback`, with `source` from the table above;
 - commands: `navigate({ direction })`, `like()`, `dismiss()`, `undo()` — the body of `handleShortcut()` today.
@@ -331,7 +331,7 @@ Row 6 is the one soft spot: ad detection failing opens the ad's menu. The exact-
 A page-level check, cheap, run from `main.sync()` at most once per second while on For You:
 
 - Condition: `x.column()` exists and contains ≥ 3 `article` elements (any article — this is the one place a bare `article` is queried, in `x.health()`), and `feed.read()` has returned zero items for two consecutive checks.
-- Action: `ui.notify({ message: "wheel can't read this feed layout — shortcuts are off until wheel is updated." })` once per page load; set `wheel.__driftNoticed = true`.
+- Action: `ui.notify({ message: "noyes can't read this feed layout — shortcuts are off until noyes is updated." })` once per page load; set `noyes.__driftNoticed = true`.
 - Per action: `l` on a post where `x.likeState()` is `missing` (neither `like` nor `unlike` present) shows `Like control not found.` once per page load. `liked` stays silent (today's behavior).
 
 `x.health({ root })` returns `{ post: n, withId: n, ads: n, like: n, liked: n, caret: n, avatar: n, column: boolean, forYou: boolean }` counts for the given root. `main.js` uses it for the condition above; the probe prints it.
@@ -356,11 +356,11 @@ export function load({ files, globals }) {
   });
   for (const file of files)
     vm.runInContext(readFileSync(file, "utf8"), context, { filename: file });
-  return context.__wheel;
+  return context.__noyes;
 }
 ```
 
-Tests pass a fake `wheel.x` (an object with the same interface returning plain objects) by pre-seeding `globals.__wheel = { x: fakeX }`; the real `x.js` is simply not in `files`. What is unit-tested:
+Tests pass a fake `noyes.x` (an object with the same interface returning plain objects) by pre-seeding `globals.__noyes = { x: fakeX }`; the real `x.js` is simply not in `files`. What is unit-tested:
 
 - `feed.js`: grouping from a fake `x.isConversationRail`; neighbor selection; `reconcile` with synthetic mutation records; suppression release rules.
 - `feedback.js`: every row of the transition and interrupt tables; the five invariants; timing via injected `now`/`sleep`.
@@ -375,7 +375,7 @@ Command: `node --test tests/unit/` from the repository root (`npm run test:unit`
 Keep Playwright for alignment, snap, noyes release, mutation batching, and the end-to-end flows on the synthetic feed. Changes:
 
 - `tests/helpers.mjs` exports `inject({ page })`: reads `extension/manifest.json`, `addStyleTag` for each CSS, `addScriptTag` for each JS in order. All three spec files use it; no spec names `content.js`.
-- Split `wheel.spec.mjs` into `feedback.spec.mjs`, `undo.spec.mjs`, `selection.spec.mjs`, `grouping.spec.mjs`, `input.spec.mjs`, keeping test names unchanged so history is searchable. `navigation.spec.mjs` and `extension.spec.mjs` stay.
+- Split `noyes.spec.mjs` into `feedback.spec.mjs`, `undo.spec.mjs`, `selection.spec.mjs`, `grouping.spec.mjs`, `input.spec.mjs`, keeping test names unchanged so history is searchable. `navigation.spec.mjs` and `extension.spec.mjs` stay.
 - Delete the `.wheel-button` assertions.
 - `playwright.config.mjs`: `testDir` stays `./tests`; add `testIgnore: ["**/unit/**"]`.
 
@@ -396,12 +396,12 @@ Purpose: detect X drift before a user does. It is the only check that touches re
 Run from the repository root with a logged-in Chrome profile copy or a dedicated profile directory:
 
 ```
-WHEEL_PROFILE_DIR=~/noyes-probe-profile node scripts/probe-live.mjs
+NOYES_PROFILE_DIR=~/noyes-probe-profile node scripts/probe-live.mjs
 ```
 
 Behavior:
 
-1. Launch a Playwright persistent context on `WHEEL_PROFILE_DIR` (fail with exit 2 and a message naming the variable if unset or missing). First run: the user logs in by hand in the opened window and presses Enter in the terminal.
+1. Launch a Playwright persistent context on `NOYES_PROFILE_DIR` (fail with exit 2 and a message naming the variable if unset or missing). First run: the user logs in by hand in the opened window and presses Enter in the terminal.
 2. Open `https://x.com/home`. Wait until `x.onForYou()` is true or 20 s pass (exit 1: `For You not detected` — rows 3–4).
 3. Inject `x.js` only (via `addScriptTag`) and call `x.health({ root: document })` plus one `x.feedbackItem`-shaped check **without opening a menu**: assert that the first visible post has a caret (row 10). Menu and label rows (11–12) cannot be probed without a click; print `not probed` for them.
 4. Scroll at most three viewports to find one conversation (two adjacent cells); report `isConversationRail` result and, on failure, which threshold in `contract.rail` failed.
@@ -418,7 +418,7 @@ Each phase ends with the AGENTS.md check sequence green: `npm run check && npm r
 
 The working tree has uncommitted edits to `extension/content.js` (396 insertions, 380 deletions versus `10515f1`: helper reorganization such as `hrefId`, `primaryColumn`, `isAd`, `byKey`, plus the section banners) and an untracked `wheel-src.tgz` at the root. This plan was written against the working-tree version.
 
-- Run the check sequence on the working tree. If green, commit it (`refactor(wheel): group helpers and constants`). If not, decide with the owner whether to fix or `git checkout -- extension/content.js`; do not start Phase 1 on a red baseline.
+- Run the check sequence on the working tree. If green, commit it (`refactor(noyes): group helpers and constants`). If not, decide with the owner whether to fix or `git checkout -- extension/content.js`; do not start Phase 1 on a red baseline.
 - `wheel-src.tgz`: decision for the owner (§8). It is not shipped (packaging reads only `extension/`), but it is unignored, so `vet` would check any `.js` inside it if extracted, and `git add -A` would commit it.
 
 Done when: `git status --short` is empty and the check sequence passes.
@@ -426,15 +426,15 @@ Done when: `git status --short` is empty and the check sequence passes.
 ### Phase 1 — extract `x.js` (pure code motion)
 
 - Create `extension/x.js` with the `contract` table and every function in §3.3 x.js, moving the bodies from `content.js` unchanged (`own`, `hrefId`, `postKey` → `postId`, `primaryColumn` → `column`, `isAd`, `isAvatarRail`+`continuesConversation`'s DOM half → `isConversationRail`, `onForYou`, `overlayOpen`, `typing` → `typingContext`, `feedbackItem`, `closeMenu`, the DOM half of `undoControls`, the `like`/`caret` lookups out of `likePost`/`dismiss`).
-- `content.js` reads `const x = globalThis.__wheel.x;` at the top and calls through. No logic change. `continuesConversation`'s cell-adjacency check moves too (it is row 2 + row 8).
+- `content.js` reads `const x = globalThis.__noyes.x;` at the top and calls through. No logic change. `continuesConversation`'s cell-adjacency check moves too (it is row 2 + row 8).
 - `manifest.json`: `"js": ["x.js", "content.js"]`.
-- Tests: `tests/wheel.spec.mjs` `start()` and `tests/navigation.spec.mjs` `openFeed()` inject `x.js` before `content.js` (temporary; replaced by the manifest-driven helper in Phase 5). `extension.spec.mjs` needs no change and proves the manifest order.
+- Tests: `tests/noyes.spec.mjs` `start()` and `tests/navigation.spec.mjs` `openFeed()` inject `x.js` before `content.js` (temporary; replaced by the manifest-driven helper in Phase 5). `extension.spec.mjs` needs no change and proves the manifest order.
 
 Done when: check sequence green; `grep -n 'data-testid' extension/content.js` prints nothing. Risk: low — behavior is identical; the only failure mode is a missed reference, which the browser tests catch immediately.
 
 ### Phase 2 — enforce the layer rule
 
-- Add `scripts/layers.mjs` per §3.2 and `scripts/layers.test.mjs` (`node --test`) covering: a clean tree passes; a planted `data-testid` in a non-`x.js` file fails with the file and line; a `wheel.feedback` reference from `feed.js` fails; a manifest/disk mismatch exits 2.
+- Add `scripts/layers.mjs` per §3.2 and `scripts/layers.test.mjs` (`node --test`) covering: a clean tree passes; a planted `data-testid` in a non-`x.js` file fails with the file and line; a `noyes.feedback` reference from `feed.js` fails; a manifest/disk mismatch exits 2.
 - `package.json`: `"check": "npm run vet && node scripts/layers.mjs"`, `"test:vet": "node --test scripts/vet.test.mjs scripts/layers.test.mjs"` so AGENTS.md's four-command sequence is unchanged.
 - Until Phase 4, `content.js` is exempt from Rule B (it legitimately references everything); the exemption is a one-line allowlist entry that Phase 4 deletes.
 
@@ -443,8 +443,8 @@ Done when: `npm run check` prints both `vet:` and `layers:` success lines; plant
 ### Phase 3 — the feedback state machine, unit tests first
 
 - Write `tests/unit/load.mjs` and `tests/unit/feedback.test.mjs` **before** touching `dismiss()`. Derive the cases from the existing browser tests whose names start with `regression:`, `navigation cancels`, `Escape cancels`, `post recycling`, `does not touch an already open`, `holding n`, and the `undo shortcut:` group — one unit case per row of the two tables in §3.3.
-- Create `extension/feedback.js` implementing the machine with injected `{ x, ui, feed, selection, now, sleep }` dependencies resolved from `wheel.*` at call time (so the unit loader can substitute fakes by seeding `__wheel`).
-- Move `likePost`, `likeCurrent`, `undoControls`' logic half, `undoDismissal`, `waitFor`, `cancelFeedback`, `dismiss`, `dismissCurrent` out of `content.js`. `content.js` keeps selection/feed/input/main for now and calls `wheel.feedback.*`.
+- Create `extension/feedback.js` implementing the machine with injected `{ x, ui, feed, selection, now, sleep }` dependencies resolved from `noyes.*` at call time (so the unit loader can substitute fakes by seeding `__noyes`).
+- Move `likePost`, `likeCurrent`, `undoControls`' logic half, `undoDismissal`, `waitFor`, `cancelFeedback`, `dismiss`, `dismissCurrent` out of `content.js`. `content.js` keeps selection/feed/input/main for now and calls `noyes.feedback.*`.
 - `manifest.json`: `["x.js", "ui.js", "feedback.js", "content.js"]` — `ui.js` is created here because feedback needs `notify`.
 
 Done when: `npm run test:unit` passes with a case per table row; browser suite green with no test edited except injection order. If a browser test and a unit test disagree, the browser test is the oracle — the unit case was derived wrongly; fix the case, not the behavior.
@@ -453,14 +453,14 @@ Done when: `npm run test:unit` passes with a case per table row; browser suite g
 
 - Create `feed.js`, `selection.js`, `input.js`, `main.js` from the remaining sections of `content.js`; delete `content.js`; manifest becomes the §3.1 list; remove the Rule B exemption.
 - Add the drift check (§3.5) in `main.js` and `x.health`/`x.likeState` in `x.js`. Add one browser test per notice: a fixture with articles that lack `data-testid="tweet"` shows the drift notice; a post with neither like control shows `Like control not found.`; a liked post stays silent.
-- CSS: `--wheel-header-height` per §3.3.
+- CSS: `--noyes-header-height` per §3.3.
 - `tests/unit/feed.test.mjs`, `tests/unit/input.test.mjs`.
 
 Done when: `ls extension/` is exactly `content.css manifest.json x.js ui.js feed.js selection.js feedback.js input.js main.js`; check sequence green; `npm run test:unit` green.
 
 ### Phase 5 — test reorganization
 
-Per §4.2: `tests/helpers.mjs` with manifest-driven `inject`, split `wheel.spec.mjs`, delete `.wheel-button` assertions, `testIgnore` for unit tests. No test names change.
+Per §4.2: `tests/helpers.mjs` with manifest-driven `inject`, split `noyes.spec.mjs`, delete `.wheel-button` assertions, `testIgnore` for unit tests. No test names change.
 
 Done when: `npm test` reports the same number of tests as before Phase 5 (splitting moves tests, it does not remove them) and `grep -rn wheel-button tests/` prints nothing.
 
@@ -468,7 +468,7 @@ Done when: `npm test` reports the same number of tests as before Phase 5 (splitt
 
 Per §5. Add `"probe:live": "node scripts/probe-live.mjs"` to `package.json`. Not in CI. Document in README "Development" in two lines and in AGENTS.md as a step to report separately (AGENTS.md already says live verification is reported separately).
 
-Done when: the script exits 2 with a clear message when `WHEEL_PROFILE_DIR` is unset, and the owner has run it once against live X and recorded the row results in the PR description (counts and booleans only).
+Done when: the script exits 2 with a clear message when `NOYES_PROFILE_DIR` is unset, and the owner has run it once against live X and recorded the row results in the PR description (counts and booleans only).
 
 ### Phase 7 — documentation
 

@@ -27,11 +27,11 @@ function setup({ posts, rails = [], column = true }) {
     timestamps: ({ node }) => node.times || [],
     timestampId: ({ time }) => time.id,
   };
-  const wheel = load({
+  const noyes = load({
     files: ["feed.js"],
-    globals: { __wheel: { x }, innerHeight: 820 },
+    globals: { __noyes: { x }, innerHeight: 820 },
   });
-  return { feed: wheel.feed, byId };
+  return { feed: noyes.feed, byId };
 }
 
 // Arrays made inside the vm context have that realm's prototype.

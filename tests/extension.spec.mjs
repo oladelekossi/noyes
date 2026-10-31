@@ -8,7 +8,7 @@ test("packaged extension injects automatically and sends native feedback", async
     channel: "chromium",
     headless: true,
     executablePath:
-      process.env.WHEEL_CHROMIUM_EXECUTABLE || chromium.executablePath(),
+      process.env.NOYES_CHROMIUM_EXECUTABLE || chromium.executablePath(),
     args: [
       `--disable-extensions-except=${extension}`,
       `--load-extension=${extension}`,
@@ -28,7 +28,7 @@ test("packaged extension injects automatically and sends native feedback", async
     await page.keyboard.press("k");
     await page.keyboard.press("l");
     await expect.poll(() => page.evaluate(() => window.likes)).toEqual(["102"]);
-    await expect(page.locator(".wheel-selected")).toHaveCSS(
+    await expect(page.locator(".noyes-selected")).toHaveCSS(
       "outline",
       "rgb(34, 197, 94) solid 2px",
     );
@@ -39,7 +39,7 @@ test("packaged extension injects automatically and sends native feedback", async
       .toEqual(["102"]);
     expect(await page.evaluate(() => window.otherActions)).toEqual([]);
     expect(await page.evaluate(() => window.nativeKeys)).toEqual([]);
-    await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
       "href",
       "/sam/status/103",
     );

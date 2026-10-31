@@ -31,7 +31,7 @@ test("navigation skips ads and nested quoted posts", async ({ page }) => {
     document.querySelector("article").append(quote);
   });
   for (let i = 0; i < 5; i++) await page.keyboard.press("k");
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/sam/status/103",
   );
@@ -58,7 +58,7 @@ test("regression: media tracking inside ordinary posts cannot stall navigation a
   });
   await page.keyboard.press("k");
   await page.keyboard.press("k");
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/jordan/status/102",
   );
@@ -67,19 +67,19 @@ test("regression: media tracking inside ordinary posts cannot stall navigation a
   await expect
     .poll(() => page.evaluate(() => window.feedback))
     .toEqual(["101"]);
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/jordan/status/102",
   );
   await page.keyboard.press("k");
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/sam/status/103",
   );
   await page.keyboard.press("j");
   await page.keyboard.press("l");
   expect(await page.evaluate(() => window.likes)).toEqual(["102"]);
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/sam/status/103",
   );
@@ -96,9 +96,9 @@ test("regression: quoted ad indicators do not classify the enclosing post as an 
     document.querySelector("article").append(quote);
   });
   await page.keyboard.press("k");
-  await expect(page.locator("article.wheel-selected")).toHaveCount(1);
+  await expect(page.locator("article.noyes-selected")).toHaveCount(1);
   await expect(
-    page.locator(".wheel-selected").locator(":scope > .post-body a:has(time)"),
+    page.locator(".noyes-selected").locator(":scope > .post-body a:has(time)"),
   ).toHaveAttribute("href", "/alex/status/101");
 });
 
@@ -107,33 +107,33 @@ test("conversation is one selection and j/k skip its context posts", async ({
 }) => {
   await threadFixture(page);
   await page.keyboard.press("k");
-  await expect(page.locator("article.wheel-selected")).toHaveCount(2);
-  await expect(page.locator(".wheel-thread-start a:has(time)")).toHaveAttribute(
+  await expect(page.locator("article.noyes-selected")).toHaveCount(2);
+  await expect(page.locator(".noyes-thread-start a:has(time)")).toHaveAttribute(
     "href",
     "/alex/status/201",
   );
-  await expect(page.locator(".wheel-thread-end a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-thread-end a:has(time)")).toHaveAttribute(
     "href",
     "/alex/status/202",
   );
-  await expect(page.locator(".wheel-thread-start")).toHaveCSS(
+  await expect(page.locator(".noyes-thread-start")).toHaveCSS(
     "outline-style",
     "none",
   );
-  await expect(page.locator(".wheel-thread-start")).toHaveCSS(
+  await expect(page.locator(".noyes-thread-start")).toHaveCSS(
     "box-shadow",
     /34, 197, 94/,
   );
   await page.keyboard.press("k");
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/alex/status/203",
   );
   await page.keyboard.press("j");
-  await expect(page.locator("article.wheel-selected")).toHaveCount(2);
+  await expect(page.locator("article.noyes-selected")).toHaveCount(2);
   await page.keyboard.press("l");
   expect(await page.evaluate(() => window.likes)).toEqual(["202"]);
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/alex/status/203",
   );
@@ -148,7 +148,7 @@ test("conversation feedback targets the reply, never the context author", async 
     .poll(() => page.evaluate(() => window.feedback))
     .toEqual(["202"]);
   expect(await page.evaluate(() => window.openedMenus)).toEqual(["202"]);
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/alex/status/203",
   );
@@ -169,12 +169,12 @@ test("conversation without feedback skips once and closes its native menu", asyn
   expect(await page.evaluate(() => window.openedMenus)).toEqual(["202"]);
   expect(await page.evaluate(() => window.otherActions)).toEqual([]);
   await expect(page.locator("article")).toHaveCount(3);
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/alex/status/203",
   );
   await page.keyboard.press("j");
-  await expect(page.locator("article.wheel-selected")).toHaveCount(2);
+  await expect(page.locator("article.noyes-selected")).toHaveCount(2);
 });
 
 test("avatar rails join adjacent cells but unrelated mentions stay separate", async ({
@@ -192,9 +192,9 @@ test("avatar rails join adjacent cells but unrelated mentions stay separate", as
       "Replying to @jordan, but a separate feed item";
   });
   await page.keyboard.press("k");
-  await expect(page.locator("article.wheel-selected")).toHaveCount(2);
+  await expect(page.locator("article.noyes-selected")).toHaveCount(2);
   await page.keyboard.press("k");
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/sam/status/103",
   );
@@ -202,8 +202,8 @@ test("avatar rails join adjacent cells but unrelated mentions stay separate", as
     document.querySelectorAll("article")[0].lastElementChild.remove(),
   );
   await page.keyboard.press("j");
-  await expect(page.locator("article.wheel-selected")).toHaveCount(1);
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator("article.noyes-selected")).toHaveCount(1);
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/jordan/status/102",
   );
@@ -215,13 +215,13 @@ test("a replaced conversation reply regains the whole green box", async ({
   await threadFixture(page);
   await page.keyboard.press("k");
   await page.evaluate(() => {
-    const reply = document.querySelector(".wheel-thread-end");
+    const reply = document.querySelector(".noyes-thread-end");
     const replacement = reply.cloneNode(true);
     replacement.className = "react-replacement";
     reply.replaceWith(replacement);
   });
-  await expect(page.locator("article.wheel-selected")).toHaveCount(2);
-  await expect(page.locator(".wheel-thread-end a:has(time)")).toHaveAttribute(
+  await expect(page.locator("article.noyes-selected")).toHaveCount(2);
+  await expect(page.locator(".noyes-thread-end a:has(time)")).toHaveAttribute(
     "href",
     "/alex/status/202",
   );
@@ -240,7 +240,7 @@ for (const hiddenStyle of ["visibility:hidden", "opacity:0"]) {
       posts[0].append(line);
     }, hiddenStyle);
     await page.keyboard.press("k");
-    await expect(page.locator("article.wheel-selected")).toHaveCount(1);
+    await expect(page.locator("article.noyes-selected")).toHaveCount(1);
     await page.keyboard.press("l");
     expect(await page.evaluate(() => window.likes)).toEqual(["101"]);
   });

@@ -31,8 +31,8 @@ const build = Object.fromEntries(
   ]),
 );
 const source = readFileSync("debug/recorder.js", "utf8")
-  .replace('"__WHEEL_REPORT_TEMPLATE__"', () => JSON.stringify(template))
-  .replace('"__WHEEL_BUILD__"', () => JSON.stringify(build));
+  .replace('"__NOYES_REPORT_TEMPLATE__"', () => JSON.stringify(template))
+  .replace('"__NOYES_BUILD__"', () => JSON.stringify(build));
 writeFileSync(resolve(output, "recorder.js"), source);
 writeFileSync(
   resolve(output, "manifest.json"),

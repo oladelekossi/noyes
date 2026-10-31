@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
-const temp = mkdtempSync(join(tmpdir(), "wheel-vet-test-"));
+const temp = mkdtempSync(join(tmpdir(), "noyes-vet-test-"));
 const script = resolve("scripts/vet.mjs");
 writeFileSync(join(temp, "vet.yaml"), readFileSync("vet.yaml"));
 after(() => rmSync(temp, { recursive: true, force: true }));

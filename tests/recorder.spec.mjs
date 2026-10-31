@@ -27,14 +27,14 @@ test("records consumed keys, anonymous lifecycle changes and a marked outline fa
   page,
 }) => {
   await openRecorder({ page });
-  expect(await page.evaluate(() => __wheel.recorder.data().records)).toEqual(
+  expect(await page.evaluate(() => __noyes.recorder.data().records)).toEqual(
     [],
   );
   await page.getByRole("button", { name: "Record", exact: true }).click();
   await page.keyboard.press("k");
   await page.keyboard.press("k");
   await page.evaluate(() => {
-    const post = document.querySelector(".wheel-selected");
+    const post = document.querySelector(".noyes-selected");
     post.querySelector(".post-text").textContent = "PRIVATE-SENTINEL-SECRET";
     const original = post.cloneNode(true);
     post.replaceWith(original);
@@ -42,16 +42,16 @@ test("records consumed keys, anonymous lifecycle changes and a marked outline fa
   await expect
     .poll(() =>
       page.evaluate(() =>
-        __wheel.recorder.data().records.some((r) => r.type === "dom-batch"),
+        __noyes.recorder.data().records.some((r) => r.type === "dom-batch"),
       ),
     )
     .toBe(true);
   // Simulate the recorded symptom: X unmounts the selected article.
-  await page.evaluate(() => document.querySelector(".wheel-selected").remove());
+  await page.evaluate(() => document.querySelector(".noyes-selected").remove());
   await expect
     .poll(() =>
       page.evaluate(() =>
-        __wheel.recorder
+        __noyes.recorder
           .data()
           .records.some(
             (r) => r.state?.diagnosis === "selected-item-missing-from-feed",
@@ -61,7 +61,7 @@ test("records consumed keys, anonymous lifecycle changes and a marked outline fa
     .toBe(true);
   await page.getByRole("button", { name: "Bug here" }).click();
   await page.getByRole("button", { name: "Stop", exact: true }).click();
-  const data = await page.evaluate(() => __wheel.recorder.data());
+  const data = await page.evaluate(() => __noyes.recorder.data());
   expect(
     data.records.some(
       (r) =>
@@ -85,7 +85,7 @@ test("records consumed keys, anonymous lifecycle changes and a marked outline fa
   const before = data.records.length;
   await page.keyboard.press("j");
   expect(
-    (await page.evaluate(() => __wheel.recorder.data().records)).length,
+    (await page.evaluate(() => __noyes.recorder.data().records)).length,
   ).toBe(before);
 
   const download = page.waitForEvent("download");
@@ -93,7 +93,7 @@ test("records consumed keys, anonymous lifecycle changes and a marked outline fa
   const file = await (await download).path();
   const html = readFileSync(file, "utf8");
   expect(html).not.toContain("PRIVATE-SENTINEL-SECRET");
-  expect(html).not.toContain("__WHEEL_DATA__");
+  expect(html).not.toContain("__NOYES_DATA__");
   const report = await page.context().newPage();
   await report.setContent(html);
   await expect(report.locator("h1")).toHaveText("noyes flight recorder");
@@ -113,9 +113,9 @@ test("typing stays private and recorder controls preserve alignment", async ({
   await openRecorder({ page });
   await page.getByRole("button", { name: "Record", exact: true }).click();
   await page.keyboard.press("k");
-  await expect(page.locator("html")).toHaveClass(/wheel-aligning/);
+  await expect(page.locator("html")).toHaveClass(/noyes-aligning/);
   await page.getByRole("button", { name: "Bug here" }).click();
-  await expect(page.locator("html")).toHaveClass(/wheel-aligning/);
+  await expect(page.locator("html")).toHaveClass(/noyes-aligning/);
   await page.evaluate(() => {
     const input = document.createElement("input");
     document.body.prepend(input);
@@ -123,7 +123,7 @@ test("typing stays private and recorder controls preserve alignment", async ({
   });
   await page.keyboard.type("private-njkl-password");
   await page.getByRole("button", { name: "Stop", exact: true }).click();
-  const data = await page.evaluate(() => __wheel.recorder.data());
+  const data = await page.evaluate(() => __noyes.recorder.data());
   const keys = data.records.filter((r) => r.type === "keydown-before");
   expect(keys.map((r) => r.detail.key)).toEqual(["k"]);
   expect(JSON.stringify(data)).not.toContain("private-njkl-password");
@@ -141,15 +141,15 @@ test("feedback diagnostics distinguish unrecognized text without dispatching it"
   });
   await page.getByRole("button", { name: "Record", exact: true }).click();
   await page.keyboard.press("n");
-  await expect(page.locator(".wheel-notice")).toHaveText(
+  await expect(page.locator(".noyes-notice")).toHaveText(
     "Skipped — feedback unavailable; nothing sent.",
   );
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/jordan/status/102",
   );
   expect(await page.evaluate(() => window.feedback)).toEqual([]);
-  const unavailable = await page.evaluate(() => __wheel.recorder.data());
+  const unavailable = await page.evaluate(() => __noyes.recorder.data());
   const locating = unavailable.records.find(
     (r) => r.state?.feedbackState === "locating" && r.state.menus.length,
   );
@@ -168,11 +168,11 @@ test("feedback diagnostics distinguish unrecognized text without dispatching it"
   await expect
     .poll(() => page.evaluate(() => window.feedback))
     .toEqual(["102"]);
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/sam/status/103",
   );
-  const sent = await page.evaluate(() => __wheel.recorder.data());
+  const sent = await page.evaluate(() => __noyes.recorder.data());
   expect(
     sent.records.some((r) =>
       r.state?.menus.some((menu) => menu.hasExactFeedback),
@@ -186,7 +186,7 @@ test("debug build captures in Chrome's real isolated world without manual inject
     channel: "chromium",
     headless: true,
     executablePath:
-      process.env.WHEEL_CHROMIUM_EXECUTABLE || chromium.executablePath(),
+      process.env.NOYES_CHROMIUM_EXECUTABLE || chromium.executablePath(),
     args: [
       `--disable-extensions-except=${output}`,
       `--load-extension=${output}`,
@@ -200,13 +200,13 @@ test("debug build captures in Chrome's real isolated world without manual inject
     await page.goto("https://x.com/home");
     await page.getByRole("button", { name: "Record", exact: true }).click();
     await page.keyboard.press("k");
-    await expect(page.locator(".wheel-selected")).toHaveCount(1);
+    await expect(page.locator(".noyes-selected")).toHaveCount(1);
     await page.keyboard.press("n");
     await expect
       .poll(() => page.evaluate(() => window.feedback))
       .toEqual(["101"]);
     await page.keyboard.press("j");
-    await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
       "href",
       "/alex/status/101",
     );
@@ -217,7 +217,7 @@ test("debug build captures in Chrome's real isolated world without manual inject
     const html = readFileSync(await (await download).path(), "utf8");
     const data = JSON.parse(
       html.match(
-        /<script id="wheel-data" type="application\/json">\s*([\s\S]*?)<\/script>/,
+        /<script id="noyes-data" type="application\/json">\s*([\s\S]*?)<\/script>/,
       )[1],
     );
     expect(

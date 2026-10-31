@@ -1,7 +1,7 @@
-// Live contract probe: checks wheel's X adapter (extension/x.js) against the
+// Live contract probe: checks noyes's X adapter (extension/x.js) against the
 // real For You feed, so drift is found before a user finds it.
 //
-//   WHEEL_PROFILE_DIR=~/wheel-probe-profile node scripts/probe-live.mjs
+//   NOYES_PROFILE_DIR=~/noyes-probe-profile node scripts/probe-live.mjs
 //
 // Read-only and manual; never run in CI. It never clicks, likes, dismisses,
 // or opens a menu, and prints counts and booleans only: no post text,
@@ -23,19 +23,19 @@ const selfTest = process.argv.includes("--fixture");
 
 function profile() {
   if (selfTest) return "";
-  const directory = process.env.WHEEL_PROFILE_DIR;
+  const directory = process.env.NOYES_PROFILE_DIR;
   if (!directory)
     throw new Error(
-      "set WHEEL_PROFILE_DIR to a Chrome profile directory for the probe (create it first, e.g. mkdir ~/wheel-probe-profile)",
+      "set NOYES_PROFILE_DIR to a Chrome profile directory for the probe (create it first, e.g. mkdir ~/noyes-probe-profile)",
     );
   if (!existsSync(directory))
-    throw new Error(`WHEEL_PROFILE_DIR does not exist: ${directory}`);
+    throw new Error(`NOYES_PROFILE_DIR does not exist: ${directory}`);
   return directory;
 }
 
 async function waitForYou({ page }) {
   try {
-    await page.waitForFunction(() => globalThis.__wheel.x.onForYou(), null, {
+    await page.waitForFunction(() => globalThis.__noyes.x.onForYou(), null, {
       timeout: FOR_YOU_WAIT,
     });
     return true;
@@ -61,7 +61,7 @@ async function loginOnce({ page }) {
 
 // Runs in the page. Returns counts and booleans only.
 function measure() {
-  const x = globalThis.__wheel.x;
+  const x = globalThis.__noyes.x;
   const root = x.column();
   const health = root ? x.health({ root }) : null;
   const posts = root ? x.posts({ root }) : [];
@@ -216,7 +216,7 @@ async function main() {
     await page.waitForTimeout(1500);
     const found = await scan({ page });
     const { headerHeight } = await page.evaluate(
-      () => globalThis.__wheel.x.layout,
+      () => globalThis.__noyes.x.layout,
     );
     const verdicts = rows({ found, headerHeight });
     const failing = Object.entries(verdicts)

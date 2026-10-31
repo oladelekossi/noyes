@@ -8,14 +8,14 @@ test("selection clears outside For You and shortcuts leave other pages alone", a
 }) => {
   await page.keyboard.press("k");
   await page.getByRole("tab", { name: "Following", exact: true }).click();
-  await expect(page.locator(".wheel-selected")).toHaveCount(0);
+  await expect(page.locator(".noyes-selected")).toHaveCount(0);
   await page.keyboard.press("l");
   await page.getByRole("tab", { name: "For you", exact: true }).click();
   for (const path of ["/alex", "/alex/status/101"]) {
     await page.evaluate(() => history.pushState({}, "", "/home"));
     await page.keyboard.press("k");
     await page.evaluate((path) => history.pushState({}, "", path), path);
-    await expect(page.locator(".wheel-selected")).toHaveCount(0);
+    await expect(page.locator(".noyes-selected")).toHaveCount(0);
     await page.keyboard.press("l");
   }
   expect(await page.evaluate(() => window.likes)).toEqual([]);
@@ -27,13 +27,13 @@ test("repeat injection does not duplicate shortcut handlers", async ({
   await inject({ page });
   await page.keyboard.press("l");
   expect(await page.evaluate(() => window.likes)).toEqual(["101"]);
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/jordan/status/102",
   );
 });
 
-test("typing, composition, and modifier shortcuts do not trigger wheel", async ({
+test("typing, composition, and modifier shortcuts do not trigger noyes", async ({
   page,
 }) => {
   await page.evaluate(() => {
@@ -63,7 +63,7 @@ test("typing, composition, and modifier shortcuts do not trigger wheel", async (
   );
   expect(await page.evaluate(() => window.likes)).toEqual([]);
   expect(await page.evaluate(() => window.feedback)).toEqual([]);
-  await expect(page.locator(".wheel-selected")).toHaveCount(0);
+  await expect(page.locator(".noyes-selected")).toHaveCount(0);
 });
 
 test("shortcuts respect dialogs and other feed tabs", async ({ page }) => {
@@ -74,7 +74,7 @@ test("shortcuts respect dialogs and other feed tabs", async ({ page }) => {
     document.body.append(dialog);
   });
   for (const key of ["k", "l", "n"]) await page.keyboard.press(key);
-  await expect(page.locator(".wheel-selected")).toHaveCount(0);
+  await expect(page.locator(".noyes-selected")).toHaveCount(0);
   await page.evaluate(() => document.querySelector("[role=dialog]").remove());
   await page.getByRole("tab", { name: "Following", exact: true }).click();
   for (const key of ["k", "l", "n"]) await page.keyboard.press(key);

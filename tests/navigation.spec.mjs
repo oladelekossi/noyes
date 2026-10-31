@@ -13,7 +13,7 @@ async function enterAdGap(page) {
     document.querySelectorAll("article")[1].before(ad);
     window.scrollTo(0, 900);
   });
-  await expect(page.locator(".wheel-selected")).toHaveCount(0);
+  await expect(page.locator(".noyes-selected")).toHaveCount(0);
 }
 
 test("navigation: k reaches an infinite loader beyond the last tall post", async () => {
@@ -22,7 +22,7 @@ test("navigation: k reaches an infinite loader beyond the last tall post", async
     channel: "chromium",
     headless: true,
     executablePath:
-      process.env.WHEEL_CHROMIUM_EXECUTABLE || chromium.executablePath(),
+      process.env.NOYES_CHROMIUM_EXECUTABLE || chromium.executablePath(),
     viewport: { width: 1080, height: 820 },
     args: [
       `--disable-extensions-except=${extension}`,
@@ -51,7 +51,7 @@ test("navigation: k reaches an infinite loader beyond the last tall post", async
       observer.observe(loader);
     });
     for (let i = 0; i < 3; i++) await page.keyboard.press("k");
-    await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
       "href",
       "/sam/status/103",
     );
@@ -59,7 +59,7 @@ test("navigation: k reaches an infinite loader beyond the last tall post", async
     await page.keyboard.press("k");
     await expect(page.locator('a[href="/alex/status/104"]')).toHaveCount(1);
     await page.keyboard.press("k");
-    await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
       "href",
       "/alex/status/104",
     );
@@ -79,7 +79,7 @@ for (const [key, target] of [
     if (key === "k") expect(after).toBeGreaterThan(900);
     else expect(after).toBeLessThan(900);
     await page.keyboard.press(key);
-    await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
       "href",
       target,
     );
@@ -97,7 +97,7 @@ test("navigation: l and n leave offscreen posts alone inside a gap", async ({
   expect(await page.evaluate(() => window.feedback)).toEqual([]);
   expect(await page.evaluate(() => window.openedMenus)).toEqual([]);
   expect(await page.evaluate(() => scrollY)).toBe(900);
-  await expect(page.locator(".wheel-selected")).toHaveCount(0);
+  await expect(page.locator(".noyes-selected")).toHaveCount(0);
   await page.keyboard.press("k");
   await page.keyboard.press("k");
   await page.keyboard.press("l");
@@ -118,12 +118,12 @@ test("navigation: later posts do not cause deferred selection or scrolling", asy
   await page.evaluate(() => window.addPost({ id: "104" }));
   await page.waitForTimeout(1700);
   expect(await page.evaluate(() => scrollY)).toBe(afterKey);
-  await expect(page.locator(".wheel-selected")).toHaveCount(0);
+  await expect(page.locator(".noyes-selected")).toHaveCount(0);
   expect(await page.evaluate(() => window.likes)).toEqual([]);
   expect(await page.evaluate(() => window.feedback)).toEqual([]);
   await page.keyboard.press("j");
   await page.keyboard.press("k");
-  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+  await expect(page.locator(".noyes-selected a:has(time)")).toHaveAttribute(
     "href",
     "/alex/status/104",
   );
@@ -152,7 +152,7 @@ test("navigation: nested clipping does not expose a shifted rendering frame", as
       );
       samples.push(
         Math.round(
-          document.querySelector(".wheel-selected").getBoundingClientRect().top,
+          document.querySelector(".noyes-selected").getBoundingClientRect().top,
         ),
       );
     }

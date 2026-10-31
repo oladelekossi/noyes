@@ -59,10 +59,10 @@ function setup({ forYou = true } = {}) {
       log.push(["clear"]);
     },
   };
-  const wheel = load({
+  const noyes = load({
     files: ["feedback.js"],
     globals: {
-      __wheel: { x, ui, feed, selection },
+      __noyes: { x, ui, feed, selection },
       document: {},
       performance: clock.performance,
       setTimeout: clock.setTimeout,
@@ -73,7 +73,7 @@ function setup({ forYou = true } = {}) {
   for (const target of feedPosts)
     items.push({ key: target.id, target, head: target, articles: [target] });
   const dismiss = (index = 1) =>
-    wheel.feedback.dismiss({ item: items[index], items });
+    noyes.feedback.dismiss({ item: items[index], items });
   const entries = (kind) => log.filter(([type]) => type === kind);
   return {
     clock,
@@ -82,7 +82,7 @@ function setup({ forYou = true } = {}) {
     menu,
     items,
     posts: feedPosts,
-    feedback: wheel.feedback,
+    feedback: noyes.feedback,
     dismiss,
     entries,
     select: (key) => (selected = key),
@@ -234,7 +234,7 @@ test("cancelled → idle at the original deadline when no menu arrives", async (
   assert.equal(await done, undefined);
   assert.equal(t.feedback.pending(), false);
   assert.deepEqual(t.entries("release"), [["release", "102"]]);
-  // A menu after the deadline is not wheel's to close.
+  // A menu after the deadline is not noyes's to close.
   t.page.menus.push(t.menu({ name: "after" }));
   await t.clock.tick(40);
   assert.deepEqual(t.entries("close"), []);

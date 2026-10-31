@@ -11,19 +11,19 @@ noyes is a Manifest V3 content script and CSS that turns keyboard input into nat
 - `vendor/`: pinned development-only vet dependency and provenance.
 - `.github/workflows/`: CI checks and artifacts.
 
-The manifest injects on HTTPS `x.com` and `twitter.com`. Chrome runs the files in the manifest's `js` array in order, as classic scripts sharing one isolated world; they share state only through one namespace object, `globalThis.__wheel`, and each file is idempotent on re-injection. There is no build step and no `"type": "module"`. Tests inject the same files in manifest order (`tests/helpers.mjs`), so the manifest is the single source of load order.
+The manifest injects on HTTPS `x.com` and `twitter.com`. Chrome runs the files in the manifest's `js` array in order, as classic scripts sharing one isolated world; they share state only through one namespace object, `globalThis.__noyes`, and each file is idempotent on re-injection. There is no build step and no `"type": "module"`. Tests inject the same files in manifest order (`tests/helpers.mjs`), so the manifest is the single source of load order.
 
 | File | Owns | Role |
 | --- | --- | --- |
 | `x.js` | nothing | The X adapter: every selector, label, URL shape, layout constant, and timing about X, in one frozen `contract` plus lookups. |
-| `ui.js` | the notice | Notices and the `--wheel-header-height` CSS variable. |
+| `ui.js` | the notice | Notices and the `--noyes-header-height` CSS variable. |
 | `feed.js` | dismissal suppression | Posts → navigation items; viewport tests; mutation reconciliation. |
 | `selection.js` | selection, align/settle | Selected ID, outline painting, alignment, `j`/`k` movement. |
 | `feedback.js` | pending like/dismissal, native dismissal records, restore wait | Like, the dismissal state machine, Undo, and the single `interrupt` entry point. |
 | `input.js` | consumed keys | Raw events → commands and interrupts. |
 | `main.js` | refresh scheduling | Start-up, MutationObserver, repainting, drift detection. |
 
-Dependencies go one way: a file may use only files above it in this order (`x.js` and `ui.js` use none). Cancellation flows down: `input.js` interrupts `selection.js` and `feedback.js`; `feedback.js` never reads keyboard state. `npm run check` runs `scripts/layers.mjs`, which rejects X selectors or labels outside `x.js` and any `wheel.*` reference against the order.
+Dependencies go one way: a file may use only files above it in this order (`x.js` and `ui.js` use none). Cancellation flows down: `input.js` interrupts `selection.js` and `feedback.js`; `feedback.js` never reads keyboard state. `npm run check` runs `scripts/layers.mjs`, which rejects X selectors or labels outside `x.js` and any `noyes.*` reference against the order.
 
 Capture-phase input listeners register at `document_start`; DOM observation starts when the document is ready. Controls require `/home` and the visible English `For you` tab selected inside `primaryColumn`.
 
@@ -37,7 +37,7 @@ Selection stores the target status ID. Feed scans build navigation items used fo
 
 When no eligible post is visible or the selected item has no loaded neighbor, navigation scrolls once by the usable viewport height. Selection identity remains intact so repeated keys can move through a tall final post without realigning its header. There is no pending navigation intent or automatic scroll when posts arrive. Likes and feedback still require a visible item.
 
-Navigation aligns the item's top below the feed header. For 1.5 seconds, `html.wheel-aligning` disables browser scroll anchoring and snaps to a one-pixel pseudo-element at the selected header. Selected articles temporarily use `overflow: clip` so X's inner overflow container does not trap that snap target. Mutation, scroll, and animation-frame callbacks check alignment, with at most three scripted corrections. The same bounded watch waits for a temporarily unmounted next post to return by ID.
+Navigation aligns the item's top below the feed header. For 1.5 seconds, `html.noyes-aligning` disables browser scroll anchoring and snaps to a one-pixel pseudo-element at the selected header. Selected articles temporarily use `overflow: clip` so X's inner overflow container does not trap that snap target. Mutation, scroll, and animation-frame callbacks check alignment, with at most three scripted corrections. The same bounded watch waits for a temporarily unmounted next post to return by ID.
 
 Noyes, touch, pointer, or new key input ends alignment; held repeats of a consumed shortcut do not. Releasing the anchor flushes layout and cancels queued snap animation. The non-passive noyes listener applies the first page-scroll delta once and prevents its default action, avoiding a replayed snap; subsequent noyes events are native. Nested scrolling and Ctrl-noyes zoom keep their defaults. Marker restoration alone never scrolls.
 
@@ -75,7 +75,7 @@ If posts stop being recognizable (articles in the column, but no post matches or
 
 To fix drift:
 
-1. Run the live probe (`npm run probe:live`, see [README.md](../README.md#development)); it names the failing inventory rows.
+1. Run the live probe (`npm run probe:live`, see [README.md](../CONTRIBUTING.md#development)); it names the failing inventory rows.
 2. Edit the matching `contract` entry (or, rarely, its lookup) in `extension/x.js`. Add a second `candidates` entry only when the probe shows X serving both forms; never guess a fallback.
 3. Run the required checks in [AGENTS.md](../AGENTS.md#verification-and-completion), then the probe again.
 4. Bump the `manifest.json` version and run `npm run package`.
@@ -88,7 +88,7 @@ Packaging reads the manifest version and writes `dist/noyes-<version>.zip`, repl
 
 Unit tests (`npm run test:unit`) load modules into a `node:vm` context the way Chrome does, with fakes for the modules a test leaves out; they cover feed grouping and reconciliation, the dismissal state machine and interrupt table, and input gating. Layout, scrolling, and snapping stay in browser tests.
 
-`tests/feed.js` defines synthetic records with required IDs, also used in status URLs and action logs. `tests/fixture.mjs` embeds it in the HTML fixture for routed browser tests. The vet adapter selects Git-tracked/unignored JavaScript, runs Node syntax checks, then invokes the upstream analyzer and workflow checker. `vet.yaml` controls rules. See [AGENTS.md](../AGENTS.md#verification-and-completion) for required checks and [README.md](../README.md#development) for setup.
+`tests/feed.js` defines synthetic records with required IDs, also used in status URLs and action logs. `tests/fixture.mjs` embeds it in the HTML fixture for routed browser tests. The vet adapter selects Git-tracked/unignored JavaScript, runs Node syntax checks, then invokes the upstream analyzer and workflow checker. `vet.yaml` controls rules. See [AGENTS.md](../AGENTS.md#verification-and-completion) for required checks and [README.md](../CONTRIBUTING.md#development) for setup.
 
 ## Verification limits
 

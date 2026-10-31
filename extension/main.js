@@ -1,10 +1,10 @@
-// Starts wheel once per page: input listeners, page observation, repainting,
+// Starts noyes once per page: input listeners, page observation, repainting,
 // and the check that tells the user when X's layout has drifted away.
 (() => {
   "use strict";
-  const wheel = (globalThis.__wheel ??= {});
-  if (wheel.main) return;
-  wheel.main = Object.freeze({ started: performance.now() });
+  const noyes = (globalThis.__noyes ??= {});
+  if (noyes.main) return;
+  noyes.main = Object.freeze({ started: performance.now() });
 
   const DRIFT_NOTICE =
     "noyes can't read this feed layout — shortcuts are off until noyes is updated.";
@@ -15,14 +15,14 @@
   let scheduled = false;
   const drift = { checked: -Infinity, strikes: 0, noticed: false };
 
-  // The page has posts but wheel cannot recognize them or their IDs. Checked
+  // The page has posts but noyes cannot recognize them or their IDs. Checked
   // at most once a second; two failed checks in a row show one notice per load.
   function checkDrift() {
     const now = performance.now();
     if (drift.noticed || now - drift.checked < DRIFT_INTERVAL) return;
     drift.checked = now;
-    const root = wheel.x.column();
-    const health = root && wheel.x.health({ root });
+    const root = noyes.x.column();
+    const health = root && noyes.x.health({ root });
     const unreadable =
       !!health &&
       health.articles >= DRIFT_MIN_ARTICLES &&
@@ -30,22 +30,22 @@
     drift.strikes = unreadable ? drift.strikes + 1 : 0;
     if (drift.strikes < DRIFT_STRIKES) return;
     drift.noticed = true;
-    wheel.ui.notify({ message: DRIFT_NOTICE });
+    noyes.ui.notify({ message: DRIFT_NOTICE });
   }
 
   function sync() {
     scheduled = false;
-    if (!wheel.x.onForYou()) {
-      wheel.selection.clear();
+    if (!noyes.x.onForYou()) {
+      noyes.selection.clear();
       return;
     }
     checkDrift();
-    const key = wheel.selection.get();
+    const key = noyes.selection.get();
     if (!key) return;
     // React may replace the article or its class list. Keep identity separately
     // and restore the marker only on the same post, never on a recycled node.
-    wheel.selection.paint({
-      item: wheel.feed.read().find((item) => item.key === key),
+    noyes.selection.paint({
+      item: noyes.feed.read().find((item) => item.key === key),
     });
   }
 
@@ -57,9 +57,9 @@
 
   function start() {
     new MutationObserver((records) => {
-      wheel.feed.reconcile({ records });
-      wheel.feedback.reconcile();
-      wheel.selection.align();
+      noyes.feed.reconcile({ records });
+      noyes.feedback.reconcile();
+      noyes.selection.align();
       schedule();
     }).observe(document.body, {
       childList: true,
@@ -70,7 +70,7 @@
     });
     addEventListener("popstate", schedule);
     addEventListener("hashchange", schedule);
-    addEventListener("scroll", () => wheel.selection.align(), {
+    addEventListener("scroll", () => noyes.selection.align(), {
       capture: true,
       passive: true,
     });
@@ -79,8 +79,8 @@
     sync();
   }
 
-  wheel.ui.setLayoutVars({ layout: wheel.x.layout });
-  wheel.input.install();
+  noyes.ui.setLayoutVars({ layout: noyes.x.layout });
+  noyes.input.install();
   if (document.readyState === "loading")
     document.addEventListener("DOMContentLoaded", start, { once: true });
   else start();

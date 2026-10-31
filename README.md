@@ -4,7 +4,9 @@ Fine-tune your X feed from the keyboard.
 
 Move through **For You**, like posts, and send **Not interested** feedback. A green outline marks the selected post or connected conversation. X handles dismissal, confirmation, follow-up questions, and Undo.
 
-No settings, accounts, API keys, build step, or automatic feed browsing. Contributors: see [AGENTS.md](AGENTS.md).
+No settings, accounts, API keys, build step, or automatic feed browsing.
+
+> **Status:** early release. Navigation and selection are verified on live X; like and Not-interested dispatch are tested against a synthetic feed only. X can change its page at any time and break noyes until it is updated. Please [report breakage](https://github.com/oladelekossi/noyes/issues).
 
 ## Install locally
 
@@ -51,39 +53,10 @@ Going backward with `j` restores a dismissed predecessor through X's native Undo
 
 noyes runs only on X/Twitter pages and reads the displayed DOM to carry out your requested action. It has no analytics, storage, backend, external requests, or third-party runtime dependencies. Feedback uses X's own interface.
 
-## Development
+## Contributing
 
-Requires Git, Node.js 20+, npm, and `zip`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, checks, and how to file a useful bug report. Coding agents should read [AGENTS.md](AGENTS.md).
 
-```sh
-npm ci
-npx playwright install chromium
-npm run check
-npm run test:vet
-npm run test:unit
-npm test
-npm run package
-```
+## License
 
-Packaging writes `dist/noyes-<version>.zip` using the manifest version and only the files in `extension/`. Extract the ZIP before using Load unpacked.
-
-Unit tests (`npm run test:unit`) cover feed grouping, the feedback state machine, and shortcut gating without a browser. Browser tests cover navigation, actions, Undo, cancellation, recycled posts, typing protection, and appearance on a synthetic feed. An isolated Chromium test verifies extension injection. No tests submit feedback on a real X account.
-
-Set `WHEEL_CHROMIUM_EXECUTABLE` to a Chromium or Chrome for Testing executable for the extension-loading test if needed. Regular Chrome releases may not permit command-line extension loading.
-
-For disappearing outlines or navigation jumps, run `npm run debug:build` and follow [Recording a navigation bug](docs/debug-recorder.md). This creates a separate, opt-in debug extension with ordered input/state recording and an offline visual replay; it saves no post content. The normal extension and ZIP do not include it.
-
-Before a release, or when a user reports breakage, run the read-only live probe with a logged-in profile: `WHEEL_PROFILE_DIR=~/noyes-probe-profile npm run probe:live` (create the directory first; the first run asks you to log in). It prints counts and booleans per X assumption, never post content, and exits 1 naming the failing rows of [the adapter inventory](docs/resilience-plan.md#21-inventory-of-x-assumptions-in-contentjs).
-
-Live installation and sampled navigation have been verified. Live like/feedback dispatch and automatic advancement remain unverified; see [architecture and evidence limits](docs/architecture.md#verification-limits).
-
-## Code quality with vet
-
-`npm run check` runs [vet](https://github.com/gdevillele/vet) on tracked or unignored JavaScript and GitHub workflows. It enforces one function parameter (use a named options object), Prettier formatting, and full commit SHA pins for external Actions. Generated output and dependencies are ignored by Git.
-
-- `npm run format`: fix formatting.
-- `npm run vet:all`: all diagnostics as JSON.
-- `npm run vet -- extension/x.js`: check one file.
-- `npm run test:vet`: test the adapter's handling of violations, syntax errors, unpinned Actions, and empty input.
-
-The adapter selects JavaScript files because upstream discovery only finds TypeScript, and runs Node syntax checks before analysis. HTML, CSS, and JSON are outside vet's JavaScript analysis. See [vendor/README.md](vendor/README.md) for the pinned revision, license, checksum, and rebuild instructions; [vet.yaml](vet.yaml) defines enabled rules.
+[MIT](LICENSE). noyes is not affiliated with or endorsed by X Corp.

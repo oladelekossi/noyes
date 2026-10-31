@@ -4,7 +4,8 @@ noyes is a plain JavaScript browser extension for keyboard feedback on X's Engli
 
 ## References
 
-- [README.md](README.md): supported behavior, installation, setup, and commands.
+- [README.md](README.md): supported behavior and installation.
+- [CONTRIBUTING.md](CONTRIBUTING.md): development setup, checks, and the vet adapter.
 - [docs/architecture.md](docs/architecture.md): read before changing selection, shortcuts, native feedback, or packaging.
 - [docs/resilience-plan.md](docs/resilience-plan.md): the completed plan behind the layered modules, with the inventory of X assumptions and the degradation matrix; read before changing how noyes finds anything on X's page.
 - [vendor/README.md](vendor/README.md): pinned vet dependency provenance and rebuild instructions.
@@ -22,7 +23,7 @@ noyes is a plain JavaScript browser extension for keyboard feedback on X's Engli
 
 ## Verification and completion
 
-Run from the repository root with Git, Node.js 20+, npm, `zip`, installed development dependencies, and a compatible Playwright browser. See [development setup](README.md#development).
+Run from the repository root with Git, Node.js 20+, npm, `zip`, installed development dependencies, and a compatible Playwright browser. See [development setup](CONTRIBUTING.md#development).
 
 Runtime or tooling changes must pass:
 
@@ -40,6 +41,6 @@ For documentation-only changes, check links, stated behavior, and any added comm
 
 On failure, check the working directory and prerequisites once. After a relevant fix, allow at most **two retries for the same failure**. If it persists, report the command and error, then continue independent work. Do not install unrelated tools or expand scope to make checks pass.
 
-Live X checks are separate from the required sequence: `npm run probe:live` (read-only; needs `WHEEL_PROFILE_DIR`, see README) reports which X assumptions still hold. Run it only when the user asks or for a release, and report its row results (counts and booleans only).
+Live X checks are separate from the required sequence: `npm run probe:live` (read-only; needs `NOYES_PROFILE_DIR`, see CONTRIBUTING.md) reports which X assumptions still hold. Run it only when the user asks or for a release, and report its row results (counts and booleans only).
 
 Report changed files, checks and results, and unverified live behavior. If nothing changed, say so and give the evidence.

@@ -1,12 +1,12 @@
-// Input: turns raw keyboard, wheel, touch, and pointer events into commands
+// Input: turns raw keyboard, noyes, touch, and pointer events into commands
 // (navigate, like, dismiss, undo) and interrupts of selection and feedback.
 (() => {
   "use strict";
-  const wheel = (globalThis.__wheel ??= {});
-  if (wheel.input) return;
+  const noyes = (globalThis.__noyes ??= {});
+  if (noyes.input) return;
 
   const SHORTCUTS = ["j", "k", "l", "n", "u"];
-  // Shortcut keys wheel consumed on keydown; their keypress and keyup are
+  // Shortcut keys noyes consumed on keydown; their keypress and keyup are
   // swallowed too, and their repeats are not new navigation intent.
   const handledKeys = new Set();
 
@@ -14,7 +14,7 @@
     !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
 
   function handleShortcut(event) {
-    const { x, feed, selection, feedback } = wheel;
+    const { x, feed, selection, feedback } = noyes;
     const key = event.key;
     if (
       !SHORTCUTS.includes(key) ||
@@ -25,7 +25,7 @@
       !x.onForYou()
     )
       return;
-    // A menu opened by wheel can be cancelled by navigation. Other overlays
+    // A menu opened by noyes can be cancelled by navigation. Other overlays
     // keep their native shortcuts and focus handling.
     if (x.overlayOpen() && !feedback.pending()) return;
     event.preventDefault();
@@ -70,8 +70,8 @@
   };
 
   function releaseForWheel(event) {
-    wheel.feedback.interrupt({ source: "wheel", event });
-    const wasAligning = wheel.selection.interrupt();
+    noyes.feedback.interrupt({ source: "wheel", event });
+    const wasAligning = noyes.selection.interrupt();
     if (
       !wasAligning ||
       event.ctrlKey ||
@@ -90,7 +90,7 @@
           scrollsItself(element),
       );
     if (nested) return;
-    // Chrome may already have queued a snap animation for this wheel event.
+    // Chrome may already have queued a snap animation for this noyes event.
     // Apply this first delta once without snapping; later deltas stay native.
     event.preventDefault();
     const unit = event.deltaMode === 1 ? 16 : 1;
@@ -102,7 +102,7 @@
   }
 
   function install() {
-    // Deliberate input ends alignment first, so wheel never drags the page
+    // Deliberate input ends alignment first, so noyes never drags the page
     // back from the user; a navigation key then starts a new one.
     addEventListener("wheel", releaseForWheel, {
       capture: true,
@@ -112,9 +112,9 @@
       addEventListener(
         type,
         (event) => {
-          wheel.selection.interrupt();
+          noyes.selection.interrupt();
           if (event.isTrusted)
-            wheel.feedback.interrupt({
+            noyes.feedback.interrupt({
               event,
               source:
                 type === "touchstart" || event.pointerType === "touch"
@@ -131,7 +131,7 @@
         if (event.key === "Escape" && !event.isTrusted) return;
         // Repeats of a consumed shortcut are ignored, not new navigation intent.
         if (!event.repeat || !handledKeys.has(event.key))
-          wheel.selection.interrupt();
+          noyes.selection.interrupt();
       },
       true,
     );
@@ -157,10 +157,10 @@
       (event) => {
         if (
           !event.isTrusted ||
-          (!wheel.feedback.pending() && wheel.feedback.state() !== "restoring")
+          (!noyes.feedback.pending() && noyes.feedback.state() !== "restoring")
         )
           return;
-        wheel.feedback.interrupt({
+        noyes.feedback.interrupt({
           event,
           source:
             event.key === "Escape" && unmodified(event) ? "escape" : "key",
@@ -170,5 +170,5 @@
     );
   }
 
-  wheel.input = Object.freeze({ install });
+  noyes.input = Object.freeze({ install });
 })();

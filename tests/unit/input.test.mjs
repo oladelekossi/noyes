@@ -34,10 +34,10 @@ function setup({ forYou = true, typing = false, overlay = false } = {}) {
     restorePrevious: () => false,
     state: () => (page.pending ? "opening" : "idle"),
   };
-  const wheel = load({
+  const noyes = load({
     files: ["input.js"],
     globals: {
-      __wheel: { x, feed, selection, feedback },
+      __noyes: { x, feed, selection, feedback },
       // Same signatures as the globals they replace.
       addEventListener: (...args) =>
         windowListeners.push({ type: args[0], listener: args[1] }),
@@ -47,7 +47,7 @@ function setup({ forYou = true, typing = false, overlay = false } = {}) {
       },
     },
   });
-  wheel.input.install();
+  noyes.input.install();
 
   function dispatch({ type = "keydown", ...init }) {
     const event = {
@@ -123,7 +123,7 @@ for (const [name, init, arrange = () => {}] of [
     assert.deepEqual(t.commands(), []);
   });
 
-test("gate: an overlay wheel opened itself does not block shortcuts", () => {
+test("gate: an overlay noyes opened itself does not block shortcuts", () => {
   const t = setup({ overlay: true });
   t.page.pending = true;
   assert.equal(t.press({ key: "k" }).defaultPrevented, true);
