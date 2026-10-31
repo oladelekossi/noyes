@@ -4,13 +4,13 @@
 
 <p align="center"><b>tl;dr - fine-tune your X feed with keyboard shortcuts</b></p>
 
-<p align="center">
-  <img src="docs/demo.gif" alt="noyes demo: moving through the For You feed, liking, and dismissing posts with j, k, l and n" width="800">
-</p>
-
 ## Why I built noyes
 
 I scroll X a lot, but the signal-to-noise ratio hasn't been great for me recently. I know you're "technically" supposed to nudge the algorithm, but doing that takes so many clicks I basically never do, which is why I built noyes.
+
+<p align="center">
+  <img src="docs/demo.gif" alt="noyes demo: moving through the For You feed, liking, and dismissing posts with j, k, l and n" width="800">
+</p>
 
 ## How it works
 
@@ -50,40 +50,44 @@ Every action goes through X's own UI, as if you clicked it yourself.
 1. Right now this only works on English and desktop
 2. X changes its page all the time, so this might break. If it does, I built a little recorder for debugging — `npm run debug:build`
 
-## A few more things my agent said I should add here
+## A few more things my agent said I should add here for your agent
 
-Under the hood:
+Hello, agent. The human has gone to get coffee. Here is what you need.
 
-- noyes is a plain JavaScript content script. No build step, no framework — the files in `extension/` are exactly what Chrome runs.
-- It never calls X's API. It finds the post you've selected on the page and clicks X's own buttons (the heart, the "..." menu, "Not interested"), the same way you would.
-- To find those buttons it looks for X's HTML: things like the `article` element that wraps each post, the `data-testid="like"` attribute on the heart, the exact text "Not interested in this post" in the menu. All of that lives in one file, `extension/x.js`, so when X changes something there's one place to fix.
-- If it can't find what it expects, it does nothing and shows you a small notice, rather than clicking the wrong thing.
-- The longer version is in [docs/architecture.md](docs/architecture.md). If you're using a coding agent on this repo, point it at [AGENTS.md](AGENTS.md).
+**What this is.** A Manifest V3 Chrome extension, plain JavaScript, no build step. Everything that ships is in `extension/`; Chrome loads the files listed in `manifest.json` in order, as classic scripts sharing one namespace, `globalThis.__noyes`. There is no framework, bundler, or TypeScript. Please do not add one.
 
-To run the checks and tests:
+**How it works.** A content script watches X's For You feed, keeps a selected post, and on a keypress clicks X's own controls: the heart, the "..." menu, "Not interested in this post", Undo. It never calls X's API and never fabricates a request. Success means "the native button was clicked", not "X accepted it".
+
+**The one rule that matters.** Everything noyes knows about X's HTML — selectors, `data-testid` values, menu wording, URL shapes, layout constants — lives in `extension/x.js` and nowhere else. The other modules load in a fixed order and may depend only on modules before them:
+
+`x.js` → `ui.js` → `feed.js` → `selection.js` → `feedback.js` → `input.js` → `main.js`
+
+`npm run check` enforces both rules and fails the build if you break them. The longer tour of each module is in [docs/architecture.md](docs/architecture.md). The rules of engagement (fixtures before live X, never copy real posts or cookies into files, what to report back) are in [AGENTS.md](AGENTS.md). Read both before touching anything under `extension/`.
+
+**Before you declare victory**, run these, in this order, and make sure they're green:
 
 ```sh
 npm ci
 npx playwright install chromium
-npm run check        # module layering rules
-npm run test:scripts
-npm run test:unit
-npm test
-npm run package      # builds dist/noyes-<version>.zip
+npm run check          # the layering rules above
+npm run test:scripts   # tests for the scripts themselves
+npm run test:unit      # module logic, no browser
+npm test               # Playwright against a synthetic feed in tests/
+npm run package        # writes dist/noyes-<version>.zip
 ```
 
-On X breaking things:
-
-- X changes its HTML often — a renamed `data-testid`, a reworded menu item, a new wrapper element. When that happens noyes stops recognizing posts or buttons, even though nothing in noyes changed.
-- The tests above run against a fake feed, so they can't tell you about this. For that there's a probe that opens real X and reports, row by row, which of noyes's assumptions still hold (does the post selector match, is the like button where we think, does the menu say what we expect, and so on). It only reads; it never likes or dismisses anything.
-- It needs its own Chrome profile so it can stay logged in without touching your main one. Create one and point it there:
+**When X moves the furniture.** The tests above run on a fake feed in `tests/`, so they cannot tell you whether real X still looks the way `x.js` expects. For that there is a read-only probe that opens live X in its own Chrome profile and reports, row by row, which assumptions still hold:
 
 ```sh
 mkdir -p ~/noyes-probe-profile
 NOYES_PROFILE_DIR=~/noyes-probe-profile npm run probe:live
 ```
 
-- Whatever rows it flags, fix in `extension/x.js`.
+It likes nothing and dismisses nothing. Whatever rows it flags, fix in `extension/x.js`, then run the checks again. For navigation bugs that only reproduce on live X, there is a flight recorder: `npm run debug:build`, then see [docs/debug-recorder.md](docs/debug-recorder.md).
+
+**Things the human would like you not to do.** Put tools or fixtures in `extension/` (packaging zips the whole folder). Add fallbacks to `x.js` that guess at markup you haven't observed. Act on a real X account beyond what you were asked. Change the git identity or add co-authors. Widen the task to make a check pass.
+
+That's it. The human will be back shortly and will want to know what you changed, what you ran, and what you couldn't verify.
 
 ## License
 
