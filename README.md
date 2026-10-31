@@ -4,6 +4,10 @@
 
 <p align="center"><b>Fine-tune your X feed from your keyboard.</b></p>
 
+<p align="center">
+  <img src="docs/demo.gif" alt="noyes demo: moving through the For You feed, liking, and dismissing posts with j, k, l and n" width="800">
+</p>
+
 ## Why I built this
 
 I scroll X a lot, but the signal-to-noise ratio hasn't been great for me. I know you're "technically" supposed to nudge the algorithm, but doing that takes so many clicks I basically never did, which is why I built noyes.
