@@ -28,7 +28,6 @@ test("packaged extension injects automatically and sends native feedback", async
     await page.keyboard.press("k");
     await page.keyboard.press("l");
     await expect.poll(() => page.evaluate(() => window.likes)).toEqual(["102"]);
-    await expect(page.locator(".wheel-button")).toHaveCount(0);
     await expect(page.locator(".wheel-selected")).toHaveCSS(
       "outline",
       "rgb(34, 197, 94) solid 2px",

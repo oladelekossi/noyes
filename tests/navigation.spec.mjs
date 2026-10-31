@@ -1,26 +1,7 @@
 import { chromium, test, expect } from "@playwright/test";
 import { fixture } from "./fixture.mjs";
+import { openFeed } from "./helpers.mjs";
 import { resolve } from "node:path";
-
-async function openFeed({ page, inject = true }) {
-  await page.route("https://x.com/**", (route) =>
-    route.fulfill({ contentType: "text/html", body: fixture }),
-  );
-  await page.goto("https://x.com/home");
-  if (inject) {
-    await page.addStyleTag({ path: resolve("extension/content.css") });
-    for (const file of [
-      "x.js",
-      "ui.js",
-      "feed.js",
-      "selection.js",
-      "feedback.js",
-      "input.js",
-      "main.js",
-    ])
-      await page.addScriptTag({ path: resolve("extension", file) });
-  }
-}
 
 async function enterAdGap(page) {
   await openFeed({ page });
@@ -51,7 +32,7 @@ test("navigation: k reaches an infinite loader beyond the last tall post", async
   try {
     const page = await context.newPage();
     // Exercise manifest injection, then navigate only through real keypresses.
-    await openFeed({ page, inject: false });
+    await openFeed({ page, injected: false });
     await page.evaluate(() => {
       document.querySelectorAll("article")[2].style.height = "1800px";
       const loader = document.createElement("div");

@@ -10,7 +10,7 @@
     "package": "node scripts/package.mjs",
     "vet": "node scripts/vet.mjs",
     "vet:all": "node scripts/vet.mjs --json",
-    "format": "prettier --write \"extension/*.{js,css,json}\" \"scripts/*.mjs\" \"tests/*.{js,mjs}\" playwright.config.mjs",
+    "format": "prettier --write \"extension/*.{js,css,json}\" \"scripts/*.mjs\" \"tests/*.{js,mjs}\" \"tests/unit/*.mjs\" playwright.config.mjs",
     "test:vet": "node --test scripts/vet.test.mjs scripts/layers.test.mjs"
   },
   "engines": {
