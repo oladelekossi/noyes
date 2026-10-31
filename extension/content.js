@@ -346,7 +346,7 @@
     closeMenu(operation.menu);
   }
 
-  // Click X's own "Not interested" action for one post. Resolves "sent",
+  // Click X's own native feedback action for one post. Resolves "sent",
   // "unavailable", or undefined when cancelled or the post changed.
   async function dismiss(post) {
     if (pendingFeedback || !onForYou() || overlayOpen()) return;

@@ -5,12 +5,12 @@
   "description": "Fine-tune your X feed, one keystroke at a time.",
   "scripts": {
     "test": "playwright test",
-    "check": "npm run vet",
+    "check": "npm run vet && node scripts/layers.mjs",
     "package": "node scripts/package.mjs",
     "vet": "node scripts/vet.mjs",
     "vet:all": "node scripts/vet.mjs --json",
     "format": "prettier --write \"extension/*.{js,css,json}\" \"scripts/*.mjs\" \"tests/*.{js,mjs}\" playwright.config.mjs",
-    "test:vet": "node --test scripts/vet.test.mjs"
+    "test:vet": "node --test scripts/vet.test.mjs scripts/layers.test.mjs"
   },
   "engines": {
     "node": ">=20"
