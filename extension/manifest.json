@@ -3,9 +3,18 @@
   "name": "noyes",
   "version": "0.2.2",
   "description": "Tune your X feed with j/k navigation, l to like, and n for Not interested, and u to undo feedback.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "content_scripts": [
     {
-      "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ],
       "js": [
         "x.js",
         "ui.js",
@@ -15,7 +24,9 @@
         "input.js",
         "main.js"
       ],
-      "css": ["content.css"],
+      "css": [
+        "content.css"
+      ],
       "run_at": "document_start"
     }
   ]

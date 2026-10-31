@@ -1,6 +1,8 @@
-# noyes
+<p align="center">
+  <img src="docs/logo.png" alt="noyes" width="640">
+</p>
 
-tl;dr — train your X feed from your keyboard
+<p align="center"><b>tl;dr — train your X feed from your keyboard</b></p>
 
 ## Why I built this
 
