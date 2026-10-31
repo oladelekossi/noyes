@@ -38,4 +38,6 @@ For documentation-only changes, check links, stated behavior, and any added comm
 
 On failure, check the working directory and prerequisites once. After a relevant fix, allow at most **two retries for the same failure**. If it persists, report the command and error, then continue independent work. Do not install unrelated tools or expand scope to make checks pass.
 
+Live X checks are separate from the required sequence: `npm run probe:live` (read-only; needs `WHEEL_PROFILE_DIR`, see README) reports which X assumptions still hold. Run it only when the user asks or for a release, and report its row results (counts and booleans only).
+
 Report changed files, checks and results, and unverified live behavior. If nothing changed, say so and give the evidence.

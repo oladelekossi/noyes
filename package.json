@@ -11,7 +11,8 @@
     "vet": "node scripts/vet.mjs",
     "vet:all": "node scripts/vet.mjs --json",
     "format": "prettier --write \"extension/*.{js,css,json}\" \"scripts/*.mjs\" \"tests/*.{js,mjs}\" \"tests/unit/*.mjs\" playwright.config.mjs",
-    "test:vet": "node --test scripts/vet.test.mjs scripts/layers.test.mjs"
+    "test:vet": "node --test scripts/vet.test.mjs scripts/layers.test.mjs scripts/probe-live.test.mjs",
+    "probe:live": "node scripts/probe-live.mjs"
   },
   "engines": {
     "node": ">=20"

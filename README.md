@@ -65,6 +65,8 @@ Browser tests cover navigation, actions, Undo, cancellation, recycled posts, typ
 
 Set `WHEEL_CHROMIUM_EXECUTABLE` to a Chromium or Chrome for Testing executable for the extension-loading test if needed. Regular Chrome releases may not permit command-line extension loading.
 
+Before a release, or when a user reports breakage, run the read-only live probe with a logged-in profile: `WHEEL_PROFILE_DIR=~/wheel-probe-profile npm run probe:live` (create the directory first; the first run asks you to log in). It prints counts and booleans per X assumption, never post content, and exits 1 naming the failing rows of [the adapter inventory](docs/resilience-plan.md#21-inventory-of-x-assumptions-in-contentjs).
+
 Live installation and sampled navigation have been verified. Live like/feedback dispatch and automatic advancement remain unverified; see [architecture and evidence limits](docs/architecture.md#verification-limits).
 
 ## Code quality with vet
