@@ -1,7 +1,7 @@
 {
   "name": "noyes",
   "version": "0.2.2",
-  "description": "Fine-tune your X feed from your keyboard.",
+  "description": "Fine-tune your X feed with keyboard shortcuts",
   "license": "MIT",
   "repository": {
     "type": "git",
