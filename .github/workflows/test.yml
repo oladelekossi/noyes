@@ -14,7 +14,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run check
-      - run: npm run test:vet
+      - run: npm run test:scripts
       - run: npm run test:unit
       - run: npm test
       - run: npm run package

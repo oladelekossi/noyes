@@ -1,44 +1,42 @@
 # Working on noyes
 
-noyes is a plain JavaScript browser extension for keyboard feedback on X's English For You feed. Installable files live in `extension/`; there is no application build step.
+noyes is a plain-JavaScript Chrome extension (Manifest V3, no build step) that turns keystrokes into native actions on X's English For You feed. Everything that ships lives in `extension/`.
 
-## References
+## Read first
 
-- [README.md](README.md): supported behavior, installation, development setup, and checks.
-- [docs/architecture.md](docs/architecture.md): module layout, the X adapter, selection and feedback behavior, what breaks when X changes. Read before changing selection, shortcuts, native feedback, packaging, or anything that finds elements on X's page.
-- [vendor/README.md](vendor/README.md): pinned vet dependency provenance and rebuild instructions.
-- [package.json](package.json), [vet.yaml](vet.yaml), and [.github/workflows/test.yml](.github/workflows/test.yml): executable checks, rules, and CI setup.
+- [README.md](README.md): what noyes does, the shortcuts, install, and the dev commands.
+- [docs/architecture.md](docs/architecture.md): module layout, the X adapter, how selection and feedback work, and what breaks when X changes. Read it before touching selection, shortcuts, native feedback, packaging, or anything that finds elements on X's page.
+- [docs/debug-recorder.md](docs/debug-recorder.md): the development-only flight recorder, for navigation bugs that only show up on live X.
 
-## Constraints
+## Rules
 
-- Keep changes within the user's task and preserve unrelated working-tree edits.
-- Keep tools and test data outside `extension/`; packaging includes its files.
-- Only `extension/x.js` may contain X selectors, labels, or URL shapes, and modules depend only on those before them in the manifest; `npm run check` enforces both.
-- Use synthetic posts in fixtures. Never copy cookies, tokens, or private feed content into files or reports.
-- Validate interaction changes with fixtures first. Report live X verification separately; perform account actions only within the user's requested scope.
-- Commit under the Git identity configured in the checkout; do not change it or add other authors.
-- Use the npm scripts for checks and packaging. Report documentation/behavior discrepancies; fix only those within the task's scope.
+- **Only `extension/x.js` knows about X.** Selectors, labels, URL shapes, and layout constants go there and nowhere else.
+- **Modules depend one way.** A file may use only the modules loaded before it in `manifest.json`'s `js` array. `npm run check` enforces this and the rule above.
+- **Nothing extra in `extension/`.** Packaging zips every top-level file there, so tools, fixtures, and docs live elsewhere.
+- **Synthetic data only.** Fixtures use made-up posts. Never copy cookies, tokens, handles, or real feed content into files, tests, or reports.
+- **Fixtures before live X.** Validate behavior changes against the synthetic feed first. Only act on a real X account within what the user asked for, and report live results separately from test results.
+- Stay within the task. Leave unrelated working-tree edits alone, and report doc/behavior mismatches you notice rather than fixing them unasked.
 
-## Verification and completion
+## Checks
 
-Run from the repository root with Git, Node.js 20+, npm, `zip`, installed development dependencies, and a compatible Playwright browser. See [development setup](README.md#development).
+Needs Node 20+, npm, `zip`, and a Playwright Chromium (`npx playwright install chromium`).
 
-Runtime or tooling changes must pass:
+Any change to runtime code or tooling must pass, in this order:
 
 ```sh
-npm run check
-npm run test:vet
-npm run test:unit
-npm test
-npm run package
+npm run check         # layer rules
+npm run test:scripts  # tests for the scripts themselves
+npm run test:unit     # module logic, no browser
+npm test              # Playwright, synthetic feed
+npm run package       # writes dist/noyes-<version>.zip
 ```
 
-`check` runs vet then the layer checker; each reports exit 1 for rule violations and exit 2 for setup, syntax, or input errors; use `npm run vet:all` for all diagnostics. Browser failure artifacts are in `test-results/`. Packaging prints a versioned ZIP path under `dist/`.
+For docs-only changes: check that links resolve and that any commands you mention exist.
 
-For documentation-only changes, check links, stated behavior, and any added commands. Local checks need no X login or GitHub credentials; GitHub operations use the host's authenticated account, while CI uses its Actions token.
+If a check fails, look at the working directory and prerequisites once, fix, and retry at most twice for the same failure. If it still fails, report the command and error and move on to independent work. Don't install unrelated tools or widen scope to get green. Browser failure artifacts land in `test-results/`.
 
-On failure, check the working directory and prerequisites once. After a relevant fix, allow at most **two retries for the same failure**. If it persists, report the command and error, then continue independent work. Do not install unrelated tools or expand scope to make checks pass.
+`npm run probe:live` is separate: a read-only check of which X assumptions still hold on the live site (needs `NOYES_PROFILE_DIR`, see README). Run it only when asked or before a release, and report its rows as counts and booleans.
 
-Live X checks are separate from the required sequence: `npm run probe:live` (read-only; needs `NOYES_PROFILE_DIR`, see README) reports which X assumptions still hold. Run it only when the user asks or for a release, and report its row results (counts and booleans only).
+## When you're done
 
-Report changed files, checks and results, and unverified live behavior. If nothing changed, say so and give the evidence.
+Say what files changed, which checks ran and their results, and what you could not verify (live X behavior, usually). If nothing changed, say so and why.

@@ -6,9 +6,8 @@ noyes is a Manifest V3 content script and CSS that turns keyboard input into nat
 
 - `extension/`: shipped manifest, the content-script modules below, and styles.
 - `tests/`: synthetic feed, browser tests by module, the extension-loading smoke test, and `tests/unit/` for logic tests without a browser.
-- `scripts/`: packaging, the vet adapter, the layer checker, the live probe, and their tests.
+- `scripts/`: packaging, the layer checker, the live probe, and their tests.
 - `debug/`: development-only recorder and offline report template; `npm run debug:build` copies these into a separate extension under `dist/noyes-debug`. See [Recording a navigation bug](debug-recorder.md) for recording semantics and limits.
-- `vendor/`: pinned development-only vet dependency and provenance.
 - `.github/workflows/`: CI checks and artifacts.
 
 The manifest injects on HTTPS `x.com` and `twitter.com`. Chrome runs the files in the manifest's `js` array in order, as classic scripts sharing one isolated world; they share state only through one namespace object, `globalThis.__noyes`, and each file is idempotent on re-injection. There is no build step and no `"type": "module"`. Tests inject the same files in manifest order (`tests/helpers.mjs`), so the manifest is the single source of load order.
@@ -86,9 +85,9 @@ If posts stop being recognizable (articles in the column, but no post matches or
 
 To fix drift:
 
-1. Run the live probe (`npm run probe:live`, see [README.md](../README.md#development)); it names the failing inventory rows.
+1. Run the live probe (`npm run probe:live`, see [README.md](../README.md#development)); it names the failing rows.
 2. Edit the matching `contract` entry (or, rarely, its lookup) in `extension/x.js`. Add a second `candidates` entry only when the probe shows X serving both forms; never guess a fallback.
-3. Run the required checks in [AGENTS.md](../AGENTS.md#verification-and-completion), then the probe again.
+3. Run the required checks in [AGENTS.md](../AGENTS.md#checks), then the probe again.
 4. Bump the `manifest.json` version and run `npm run package`.
 
 ## Data, packaging, and checks
@@ -99,7 +98,7 @@ Packaging reads the manifest version and writes `dist/noyes-<version>.zip`, repl
 
 Unit tests (`npm run test:unit`) load modules into a `node:vm` context the way Chrome does, with fakes for the modules a test leaves out; they cover feed grouping and reconciliation, the dismissal state machine and interrupt table, and input gating. Layout, scrolling, and snapping stay in browser tests.
 
-`tests/feed.js` defines synthetic records with required IDs, also used in status URLs and action logs. `tests/fixture.mjs` embeds it in the HTML fixture for routed browser tests. The vet adapter selects Git-tracked/unignored JavaScript, runs Node syntax checks, then invokes the upstream analyzer and workflow checker. `vet.yaml` controls rules. See [AGENTS.md](../AGENTS.md#verification-and-completion) for required checks and [README.md](../README.md#development) for setup.
+`tests/feed.js` defines synthetic records with required IDs, also used in status URLs and action logs. `tests/fixture.mjs` embeds it in the HTML fixture for routed browser tests. See [AGENTS.md](../AGENTS.md#checks) for required checks and [README.md](../README.md#development) for setup.
 
 ## Verification limits
 

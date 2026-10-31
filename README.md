@@ -50,7 +50,6 @@ Every action goes through X's own UI, as if you clicked it yourself.
 
 ## Development
 
-- Linting is done with [vet](https://github.com/gdevillele/vet), pinned in `vendor/`. Rules are in `vet.yaml`.
 - How it works under the hood: [docs/architecture.md](docs/architecture.md). If you're using a coding agent, point it at [AGENTS.md](AGENTS.md).
 
 To run everything:
@@ -58,10 +57,18 @@ To run everything:
 ```sh
 npm ci
 npx playwright install chromium
-npm run check
+npm run check        # module layering rules
+npm run test:scripts
 npm run test:unit
 npm test
 npm run package      # builds dist/noyes-<version>.zip
+```
+
+To check whether X's markup still matches what noyes expects, point the read-only probe at a throwaway Chrome profile (it opens a window so you can log in once):
+
+```sh
+mkdir -p ~/noyes-probe-profile
+NOYES_PROFILE_DIR=~/noyes-probe-profile npm run probe:live
 ```
 
 ## License

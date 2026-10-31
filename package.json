@@ -14,12 +14,10 @@
   "scripts": {
     "test": "playwright test",
     "test:unit": "node --test \"tests/unit/*.test.mjs\"",
-    "check": "npm run vet && node scripts/layers.mjs",
+    "test:scripts": "node --test scripts/layers.test.mjs scripts/probe-live.test.mjs",
+    "check": "node scripts/layers.mjs",
     "package": "node scripts/package.mjs",
-    "vet": "node scripts/vet.mjs",
-    "vet:all": "node scripts/vet.mjs --json",
     "format": "prettier --write \"extension/*.{js,css,json}\" \"scripts/*.mjs\" \"tests/*.{js,mjs}\" \"tests/unit/*.mjs\" playwright.config.mjs",
-    "test:vet": "node --test scripts/vet.test.mjs scripts/layers.test.mjs scripts/probe-live.test.mjs",
     "probe:live": "node scripts/probe-live.mjs",
     "debug:build": "node scripts/build-debug.mjs"
   },
@@ -27,7 +25,6 @@
     "node": ">=20"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
-    "@vet/typescript": "file:vendor/vet-typescript-8aae498.tgz"
+    "@playwright/test": "^1.63.0"
   }
 }
