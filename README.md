@@ -8,10 +8,6 @@
 
 I scroll X a lot, but the signal-to-noise ratio hasn't been great for me recently. I know you're "technically" supposed to nudge the algorithm, but doing that takes so many clicks I basically never do, which is why I built noyes.
 
-<p align="center">
-  <img src="docs/demo.gif" alt="noyes demo: moving through the For You feed, liking, and dismissing posts with j, k, l and n" width="800">
-</p>
-
 ## How it works
 
 noyes uses keyboard shortcuts:
@@ -23,6 +19,10 @@ noyes uses keyboard shortcuts:
 | `l` | Like |
 | `n` | Not interested |
 | `u` | Undo your last `n` |
+
+<p align="center">
+  <img src="docs/demo.gif" alt="noyes demo: moving through the For You feed, liking, and dismissing posts with j, k, l and n" width="800">
+</p>
 
 ## How to install
 
