@@ -5,7 +5,7 @@ const directory = resolve("extension");
 const { version } = JSON.parse(
   readFileSync(resolve(directory, "manifest.json"), "utf8"),
 );
-const output = resolve(`dist/wheel-${version}.zip`);
+const output = resolve(`dist/noyes-${version}.zip`);
 mkdirSync(resolve("dist"), { recursive: true });
 rmSync(output, { force: true });
 execFileSync("zip", ["-q", output, ...readdirSync(directory)], {

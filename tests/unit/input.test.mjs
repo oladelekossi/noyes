@@ -31,6 +31,8 @@ function setup({ forYou = true, typing = false, overlay = false } = {}) {
     like: ({ item }) => log.push(["like", item.key]),
     dismiss: async ({ item }) => log.push(["dismiss", item.key]),
     undo: () => log.push(["undo"]),
+    restorePrevious: () => false,
+    state: () => (page.pending ? "opening" : "idle"),
   };
   const wheel = load({
     files: ["input.js"],

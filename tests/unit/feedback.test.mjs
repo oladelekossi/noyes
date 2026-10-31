@@ -21,7 +21,7 @@ function setup({ forYou = true } = {}) {
     cell: { name: `cell-${id}` },
   });
   const x = {
-    timing: { menuTimeout: 1600, pollInterval: 40 },
+    timing: { menuTimeout: 1600, pollInterval: 40, restoreTimeout: 1500 },
     onForYou: () => page.forYou,
     overlayOpen: () => page.overlay,
     postId: ({ post }) => (post.isConnected ? post.id : undefined),
@@ -96,7 +96,7 @@ test("idle → unavailable: no caret skips with the notice", async () => {
   t.posts[1].caret = null;
   assert.equal(await t.dismiss(), "unavailable");
   assert.deepEqual(t.entries("notice"), [
-    ["notice", "Skipped — feedback unavailable."],
+    ["notice", "Skipped — feedback unavailable; nothing sent."],
   ]);
   assert.equal(t.feedback.pending(), false);
   assert.deepEqual(t.entries("select"), [["select", "103"]]);
@@ -153,7 +153,7 @@ test("opening → unavailable: timeout on an unchanged post", async () => {
   await t.clock.tick(1600);
   assert.equal(await done, "unavailable");
   assert.deepEqual(t.entries("notice"), [
-    ["notice", "Skipped — feedback unavailable."],
+    ["notice", "Skipped — feedback unavailable; nothing sent."],
   ]);
   assert.deepEqual(t.entries("release"), [["release", "102"]]);
 });

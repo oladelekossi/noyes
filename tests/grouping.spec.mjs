@@ -25,7 +25,8 @@ test("navigation skips ads and nested quoted posts", async ({ page }) => {
     const ad = window.addPost({ id: "105" });
     const marker = document.createElement("div");
     marker.dataset.testid = "placementTracking";
-    ad.append(marker);
+    ad.before(marker);
+    marker.append(ad);
     const quote = window.addPost({ id: "106" });
     document.querySelector("article").append(quote);
   });
@@ -34,6 +35,71 @@ test("navigation skips ads and nested quoted posts", async ({ page }) => {
     "href",
     "/sam/status/103",
   );
+});
+
+test("regression: media tracking inside ordinary posts cannot stall navigation after feedback", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    for (const post of [...document.querySelectorAll("article")].slice(1)) {
+      const media = document.createElement("div");
+      media.dataset.testid = "placementTracking";
+      media.append(document.createElement("video"));
+      post.append(media);
+    }
+    // A real ad wraps its article, unlike the media tracker inside an
+    // ordinary post. It must still be excluded even with a valid timestamp.
+    const ad = window.addPost({ id: "104" });
+    const wrapper = document.createElement("div");
+    wrapper.dataset.testid = "placementTracking";
+    ad.before(wrapper);
+    wrapper.append(ad);
+    document.querySelectorAll("article")[0].after(wrapper);
+  });
+  await page.keyboard.press("k");
+  await page.keyboard.press("k");
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/jordan/status/102",
+  );
+  await page.keyboard.press("j");
+  await page.keyboard.press("n");
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["101"]);
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/jordan/status/102",
+  );
+  await page.keyboard.press("k");
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/sam/status/103",
+  );
+  await page.keyboard.press("j");
+  await page.keyboard.press("l");
+  expect(await page.evaluate(() => window.likes)).toEqual(["102"]);
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/sam/status/103",
+  );
+});
+
+test("regression: quoted ad indicators do not classify the enclosing post as an ad", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    const quote = window.addPost({ id: "104" });
+    const indicator = document.createElement("div");
+    indicator.dataset.testid = "promotedIndicator";
+    quote.append(indicator);
+    document.querySelector("article").append(quote);
+  });
+  await page.keyboard.press("k");
+  await expect(page.locator("article.wheel-selected")).toHaveCount(1);
+  await expect(
+    page.locator(".wheel-selected").locator(":scope > .post-body a:has(time)"),
+  ).toHaveAttribute("href", "/alex/status/101");
 });
 
 test("conversation is one selection and j/k skip its context posts", async ({
@@ -96,7 +162,7 @@ test("conversation without feedback skips once and closes its native menu", asyn
   await page.evaluate(() => (window.options = ["Mute @reply", "Block @reply"]));
   await page.keyboard.press("n");
   await expect(page.getByRole("status")).toHaveText(
-    "Skipped — feedback unavailable.",
+    "Skipped — feedback unavailable; nothing sent.",
   );
   await expect(page.getByRole("menu")).toHaveCount(0);
   expect(await page.evaluate(() => window.feedback)).toEqual([]);

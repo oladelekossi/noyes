@@ -16,10 +16,7 @@
     statusHref: { pattern: /\/status\/(\d+)/ },
     ad: {
       wrapper: ['[data-testid="placementTracking"]'],
-      candidates: [
-        '[data-testid="placementTracking"]',
-        '[data-testid="promotedIndicator"]',
-      ],
+      candidates: ['[data-testid="promotedIndicator"]'],
     },
     avatar: { candidates: ['[data-testid="Tweet-User-Avatar"]'] },
     // X's conversation connector: an empty, painted, thin vertical line
@@ -41,6 +38,7 @@
       "not interested in this post",
       "not interested in this tweet",
     ],
+    feedbackDiagnosticPhrase: "not interested",
     undoLabel: "undo",
     forYouLabel: "for you",
     tab: '[role="tab"][aria-selected="true"]',
@@ -55,7 +53,11 @@
   // X's sticky header height and the bottom margin wheel keeps clear.
   const layout = Object.freeze({ headerHeight: 100, bottomMargin: 32 });
   // Poll only during a user-requested action, without automatic retry.
-  const timing = Object.freeze({ menuTimeout: 1600, pollInterval: 40 });
+  const timing = Object.freeze({
+    menuTimeout: 1600,
+    pollInterval: 40,
+    restoreTimeout: 1500,
+  });
 
   const any = (selectors) => selectors.join(", ");
   const POST = any(contract.post.candidates);
@@ -128,10 +130,14 @@
       (post) => !post.parentElement.closest(POST),
     );
 
+  // A placement wrapper around the article identifies an ad. A tracker
+  // inside the article also appears on ordinary videos, including quotes,
+  // so descendant placement tracking is not ad evidence. Indicators must
+  // belong to this post, not to an embedded quoted article.
   const isAd = ({ post }) =>
     !!(
       post.closest(any(contract.ad.wrapper)) ||
-      post.querySelector(any(contract.ad.candidates))
+      own({ post, selectors: contract.ad.candidates })
     );
 
   const cell = ({ post }) => post.closest(CELL);
@@ -221,6 +227,17 @@
         enabled(element) &&
         contract.feedbackLabels.includes(normalize(element.textContent)),
     );
+
+  // Counts and booleans only. Related text is diagnostic evidence, never
+  // permission to dispatch an option that failed the exact action match.
+  const menuDiagnostics = ({ menu }) => ({
+    itemCount: [...menu.querySelectorAll(contract.menu.item)].filter(visible)
+      .length,
+    hasExactFeedback: !!feedbackItem({ menu }),
+    hasFeedbackText: normalize(menu.textContent).includes(
+      contract.feedbackDiagnosticPhrase,
+    ),
+  });
 
   function closeMenu({ menu }) {
     if (!menu?.isConnected || !visible(menu)) return;
@@ -317,6 +334,7 @@
     menus,
     menuAt,
     feedbackItem,
+    menuDiagnostics,
     closeMenu,
     undoControls,
     overlayOpen,

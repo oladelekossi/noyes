@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>noyes flight recorder</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: #101319;
+      color: #e8edf5;
+      font: 14px/1.5 system-ui;
+    }
+    header {
+      padding: 20px 24px;
+      border-bottom: 1px solid #394150;
+    }
+    h1 {
+      margin: 0;
+      font-size: 20px;
+    }
+    p {
+      margin: 8px 0;
+      color: #b6c1d1;
+    }
+    button,
+    select,
+    input {
+      font: inherit;
+      accent-color: #22c55e;
+    }
+    button,
+    select {
+      background: #263140;
+      border: 1px solid #657185;
+      color: inherit;
+      border-radius: 6px;
+      padding: 6px 10px;
+    }
+    button {
+      cursor: pointer;
+    }
+    label {
+      margin-left: 12px;
+    }
+    #seek {
+      width: min(700px, 95%);
+      display: block;
+      margin: 12px 0;
+    }
+    main {
+      display: grid;
+      grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+      gap: 20px;
+      padding: 20px 24px;
+    }
+    canvas {
+      width: 100%;
+      height: auto;
+      background: #1b212a;
+      border: 1px solid #586274;
+    }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-size: 12px;
+    }
+    #events {
+      height: 440px;
+      overflow: auto;
+      border: 1px solid #394150;
+    }
+    #events button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      border-radius: 0;
+      border-bottom: 1px solid #394150;
+      font:
+        12px ui-monospace,
+        monospace;
+    }
+    #events button[aria-current="true"] {
+      background: #20503b;
+    }
+    .warn {
+      color: #ffcc7a;
+    }
+    #diagnosis {
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    @media (max-width: 800px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <header>
+    <h1>noyes flight recorder</h1>
+    <p>
+      Recorded state, in sequence. Anonymous boxes show measured post geometry
+      and marker styles; they do not simulate X or rerun noyes.
+    </p>
+    <button id="play">Play</button>
+    <label
+      >Speed
+      <select id="speed">
+        <option>0.25</option>
+        <option>0.5</option>
+        <option selected>1</option>
+        <option>2</option>
+      </select></label
+    >
+    <button id="previous">Previous event</button>
+    <button id="next">Next event</button>
+    <button id="bug">Next bug marker</button>
+    <button id="json">Save JSON</button>
+    <input
+      id="seek"
+      type="range"
+      min="0"
+      value="0"
+      aria-label="Recording time"
+    />
+    <output id="time"></output>
+    <p id="summary"></p>
+  </header>
+  <main>
+    <section>
+      <div id="diagnosis"></div>
+      <canvas id="screen"></canvas>
+      <pre id="state"></pre>
+    </section>
+    <section>
+      <div id="events" aria-label="Recorded events"></div>
+      <pre id="detail"></pre>
+    </section>
+  </main>
+  <script id="wheel-data" type="application/json">
+    __WHEEL_DATA__
+  </script>
+  <script>
+    "use strict";
+    const data = JSON.parse(document.querySelector("#wheel-data").textContent);
+    const records = data.records;
+    const seek = document.querySelector("#seek");
+    const canvas = document.querySelector("#screen");
+    const ctx = canvas.getContext("2d");
+    const list = document.querySelector("#events");
+    let current = 0;
+    let playing = false;
+    let previousTime = 0;
+    let playhead = 0;
+    seek.max = data.duration;
+    document.querySelector("#summary").textContent =
+      `${data.startedAt} · noyes ${data.version} · ${records.length} events · ${records.at(-1)?.detail?.reason || "partial"}`;
+
+    function show(index) {
+      current = Math.max(0, Math.min(index, records.length - 1));
+      const entry = records[current];
+      seek.value = entry.t;
+      document.querySelector("#time").textContent =
+        `${(entry.t / 1000).toFixed(3)}s / ${(data.duration / 1000).toFixed(1)}s · #${entry.seq} ${entry.type}`;
+      let state = entry.state;
+      for (let i = current; !state && i >= 0; i--) state = records[i].state;
+      if (!state) return;
+      const diagnosis = document.querySelector("#diagnosis");
+      diagnosis.textContent = state.diagnosis;
+      diagnosis.className =
+        state.diagnosis === "visible-selection" ? "" : "warn";
+      canvas.width = state.viewport.width;
+      canvas.height = state.viewport.height;
+      ctx.fillStyle = "#18202b";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      for (const post of state.posts) {
+        const r = post.rect;
+        if (!post.visible || r.y > canvas.height || r.y + r.height < 0)
+          continue;
+        ctx.fillStyle = post.suppressed ? "#382c31" : "#253142";
+        ctx.fillRect(r.x, r.y, r.width, r.height);
+        const marked =
+          post.selected &&
+          ((post.outline.style !== "none" &&
+            parseFloat(post.outline.width) > 0) ||
+            post.outline.shadow !== "none");
+        ctx.strokeStyle = marked ? "#22c55e" : "#657185";
+        ctx.lineWidth = marked ? 3 : 1;
+        ctx.strokeRect(r.x + 2, r.y + 2, r.width - 4, r.height - 4);
+        ctx.fillStyle = "#dbe5f3";
+        ctx.font = "14px monospace";
+        ctx.fillText(
+          `${post.id || "unrecognized"} · node ${post.node}${post.suppressed ? " · suppressed" : ""}`,
+          r.x + 12,
+          Math.max(r.y + 24, state.headerHeight + 20),
+        );
+      }
+      ctx.fillStyle = "#101319ee";
+      ctx.fillRect(0, 0, canvas.width, state.headerHeight);
+      ctx.fillStyle = "#b9c6d9";
+      ctx.fillText("Feed header", 16, 25);
+      const { posts, items, ...rest } = state;
+      document.querySelector("#state").textContent = JSON.stringify(
+        rest,
+        null,
+        2,
+      );
+      document.querySelector("#detail").textContent = JSON.stringify(
+        { ...entry, state: undefined },
+        null,
+        2,
+      );
+      // Window the list so long recordings remain responsive.
+      list.replaceChildren();
+      const first = Math.max(0, current - 30);
+      const last = Math.min(records.length, current + 50);
+      for (let i = first; i < last; i++) {
+        const row = records[i];
+        const button = document.createElement("button");
+        button.textContent = `${row.t.toFixed(1).padStart(9)}ms #${row.seq} ${row.type} ${row.detail?.key || row.detail?.method || ""}`;
+        button.setAttribute("aria-current", String(i === current));
+        button.onclick = () => {
+          pause();
+          show(i);
+        };
+        list.append(button);
+      }
+      list
+        .querySelector("[aria-current=true]")
+        ?.scrollIntoView({ block: "nearest" });
+    }
+    function pause() {
+      playing = false;
+      document.querySelector("#play").textContent = "Play";
+    }
+    function tick(now) {
+      if (!playing) return;
+      playhead +=
+        (now - previousTime) * Number(document.querySelector("#speed").value);
+      previousTime = now;
+      let index = current;
+      while (index + 1 < records.length && records[index + 1].t <= playhead)
+        index++;
+      if (index !== current) show(index);
+      if (playhead >= data.duration) {
+        show(records.length - 1);
+        pause();
+        return;
+      }
+      requestAnimationFrame(tick);
+    }
+    document.querySelector("#play").onclick = () => {
+      if (playing) {
+        pause();
+        return;
+      }
+      if (current === records.length - 1) show(0);
+      playing = true;
+      playhead = records[current].t;
+      previousTime = performance.now();
+      document.querySelector("#play").textContent = "Pause";
+      requestAnimationFrame(tick);
+    };
+    seek.oninput = () => {
+      pause();
+      let low = 0,
+        high = records.length;
+      while (low < high) {
+        const mid = (low + high) >>> 1;
+        if (records[mid].t <= Number(seek.value)) low = mid + 1;
+        else high = mid;
+      }
+      show(Math.max(0, low - 1));
+    };
+    document.querySelector("#previous").onclick = () => {
+      pause();
+      show(current - 1);
+    };
+    document.querySelector("#next").onclick = () => {
+      pause();
+      show(current + 1);
+    };
+    document.querySelector("#bug").onclick = () => {
+      pause();
+      let index = records.findIndex(
+        (row, i) => i > current && row.type === "bug-marker",
+      );
+      if (index < 0)
+        index = records.findIndex((row) => row.type === "bug-marker");
+      if (index >= 0) show(index);
+    };
+    document.querySelector("#json").onclick = () => {
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(data)], { type: "application/json" }),
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "noyes-debug.json";
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    };
+    show(0);
+  </script>
+</html>

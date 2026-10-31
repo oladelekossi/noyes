@@ -104,7 +104,12 @@
     if (settling) settling.frame = requestAnimationFrame(settle);
   }
 
-  function select({ item, key = item?.key, scroll = true }) {
+  function select({
+    item,
+    key = item?.key,
+    scroll = true,
+    until = performance.now() + SETTLE_WINDOW,
+  }) {
     clear();
     if (!key) return;
     item ||= wheel.feed.read().find(byKey(key));
@@ -116,7 +121,7 @@
       key,
       // The feed's ends may not reach the header; that is not a shift.
       rest: item ? scrollToTop(item.head) : null,
-      until: performance.now() + SETTLE_WINDOW,
+      until: Math.min(until, performance.now() + SETTLE_WINDOW),
       corrections: 0,
       frame: requestAnimationFrame(settle),
     };

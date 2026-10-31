@@ -7,7 +7,7 @@
   wheel.main = Object.freeze({ started: performance.now() });
 
   const DRIFT_NOTICE =
-    "wheel can't read this feed layout — shortcuts are off until wheel is updated.";
+    "noyes can't read this feed layout — shortcuts are off until noyes is updated.";
   const DRIFT_INTERVAL = 1000;
   const DRIFT_MIN_ARTICLES = 3;
   const DRIFT_STRIKES = 2;
@@ -58,6 +58,7 @@
   function start() {
     new MutationObserver((records) => {
       wheel.feed.reconcile({ records });
+      wheel.feedback.reconcile();
       wheel.selection.align();
       schedule();
     }).observe(document.body, {

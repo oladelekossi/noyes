@@ -1,12 +1,12 @@
-# Working on wheel
+# Working on noyes
 
-wheel is a plain JavaScript browser extension for keyboard feedback on X's English For You feed. Installable files live in `extension/`; there is no application build step.
+noyes is a plain JavaScript browser extension for keyboard feedback on X's English For You feed. Installable files live in `extension/`; there is no application build step.
 
 ## References
 
 - [README.md](README.md): supported behavior, installation, setup, and commands.
 - [docs/architecture.md](docs/architecture.md): read before changing selection, shortcuts, native feedback, or packaging.
-- [docs/resilience-plan.md](docs/resilience-plan.md): the completed plan behind the layered modules, with the inventory of X assumptions and the degradation matrix; read before changing how wheel finds anything on X's page.
+- [docs/resilience-plan.md](docs/resilience-plan.md): the completed plan behind the layered modules, with the inventory of X assumptions and the degradation matrix; read before changing how noyes finds anything on X's page.
 - [vendor/README.md](vendor/README.md): pinned vet dependency provenance and rebuild instructions.
 - [package.json](package.json), [vet.yaml](vet.yaml), and [.github/workflows/test.yml](.github/workflows/test.yml): executable checks, rules, and CI setup.
 

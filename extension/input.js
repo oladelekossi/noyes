@@ -39,9 +39,15 @@
     }
     // Navigation cancels pending feedback; extra like/dismiss keys are consumed.
     if (feedback.pending() && (key === "n" || key === "l")) return;
+    const items = feed.read();
+    if (
+      key === "j" &&
+      !feedback.pending() &&
+      feedback.restorePrevious({ items })
+    )
+      return;
     feedback.interrupt({ source: "shortcut" });
 
-    const items = feed.read();
     if (key === "j" || key === "k") {
       selection.navigate({ items, direction: key === "k" ? 1 : -1 });
       return;
@@ -149,7 +155,11 @@
     document.addEventListener(
       "keydown",
       (event) => {
-        if (!event.isTrusted || !wheel.feedback.pending()) return;
+        if (
+          !event.isTrusted ||
+          (!wheel.feedback.pending() && wheel.feedback.state() !== "restoring")
+        )
+          return;
         wheel.feedback.interrupt({
           event,
           source:

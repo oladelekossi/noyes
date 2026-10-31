@@ -7,6 +7,397 @@ import {
 
 test.beforeEach(async ({ page }) => openFeed({ page }));
 
+async function nativeUndoInPlace({ page, delay = 0 }) {
+  await page.evaluate((delay) => {
+    const originals = new Map(
+      [...document.querySelectorAll("article")].map((post) => [
+        post,
+        { key: __wheel.x.postId({ post }), children: [...post.childNodes] },
+      ]),
+    );
+    window.undoClicks = [];
+    document.addEventListener(
+      "click",
+      (event) => {
+        if (!event.target.matches(".undo")) return;
+        const post = event.target.closest("article");
+        const original = originals.get(post);
+        if (!original) return;
+        event.stopImmediatePropagation();
+        window.undoClicks.push(original.key);
+        window.feedback = window.feedback.filter((key) => key !== original.key);
+        event.target.remove();
+        setTimeout(() => post.replaceChildren(...original.children), delay);
+      },
+      true,
+    );
+  }, delay);
+}
+
+test("backward navigation restores the dismissed predecessor through native Undo", async ({
+  page,
+}) => {
+  await page.locator("article").first().evaluate(restoreSameArticleOnUndo);
+  await page.keyboard.press("n");
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["101"]);
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/jordan/status/102",
+  );
+  await page.keyboard.press("j");
+  await expect.poll(() => page.evaluate(() => window.feedback)).toEqual([]);
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/alex/status/101",
+  );
+});
+
+test("backward navigation restores consecutive dismissals in feed order", async ({
+  page,
+}) => {
+  await nativeUndoInPlace({ page });
+  for (const dismissed of [["101"], ["101", "102"]]) {
+    await page.keyboard.press("n");
+    await expect
+      .poll(() => page.evaluate(() => window.feedback))
+      .toEqual(dismissed);
+  }
+  await page.keyboard.press("j");
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/jordan/status/102",
+  );
+  await page.keyboard.press("j");
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/alex/status/101",
+  );
+  expect(await page.evaluate(() => window.undoClicks)).toEqual(["102", "101"]);
+  expect(await page.evaluate(() => window.feedback)).toEqual([]);
+  await page.keyboard.press("u");
+  await expect(page.locator(".wheel-notice")).toHaveText("Undo unavailable.");
+});
+
+test("backward navigation visits an ordinary predecessor before an older dismissal", async ({
+  page,
+}) => {
+  await nativeUndoInPlace({ page });
+  await page.keyboard.press("n");
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["101"]);
+  await page.keyboard.press("k");
+  await page.keyboard.press("j");
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/jordan/status/102",
+  );
+  expect(await page.evaluate(() => window.feedback)).toEqual(["101"]);
+  await page.keyboard.press("j");
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/alex/status/101",
+  );
+  expect(await page.evaluate(() => window.undoClicks)).toEqual(["101"]);
+});
+
+test("restoring an older predecessor preserves the latest-only u target", async ({
+  page,
+}) => {
+  await nativeUndoInPlace({ page });
+  await page.keyboard.press("n");
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["101"]);
+  await page.keyboard.press("k");
+  await page.keyboard.press("n");
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["101", "103"]);
+  await page.keyboard.press("j");
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/alex/status/101",
+  );
+  await page.keyboard.press("u");
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/sam/status/103",
+  );
+  expect(await page.evaluate(() => window.undoClicks)).toEqual(["101", "103"]);
+  expect(await page.evaluate(() => window.feedback)).toEqual([]);
+});
+
+test("an unavailable nearest Undo never restores a farther dismissal", async ({
+  page,
+}) => {
+  await nativeUndoInPlace({ page });
+  for (const expected of [["101"], ["101", "102"]]) {
+    await page.keyboard.press("n");
+    await expect
+      .poll(() => page.evaluate(() => window.feedback))
+      .toEqual(expected);
+  }
+  await page
+    .locator(".undo")
+    .nth(1)
+    .evaluate((undo) => undo.remove());
+  await page.keyboard.press("j");
+  await expect(page.locator(".wheel-notice")).toHaveText("Undo unavailable.");
+  expect(await page.evaluate(() => window.feedback)).toEqual(["101", "102"]);
+  expect(await page.evaluate(() => window.undoClicks)).toEqual([]);
+});
+
+for (const source of ["wheel", "native"]) {
+  test(`a recycled dismissal scope cannot give ${source} Undo to the old identity`, async ({
+    page,
+  }) => {
+    await page.locator("article").evaluateAll(wrapInFeedCells);
+    await page.evaluate(() => {
+      const posts = [...document.querySelectorAll("article")];
+      const original = new Map(
+        posts.map((post) => [__wheel.x.postId({ post }), post]),
+      );
+      window.undoClicks = [];
+      document.addEventListener(
+        "click",
+        (event) => {
+          if (event.target.getAttribute("role") !== "menuitem") return;
+          event.stopImmediatePropagation();
+          const key = window.openedMenus.at(-1);
+          const post = original.get(key);
+          const scope = post.closest('[data-testid="cellInnerDiv"]');
+          window.feedback.push(key);
+          event.target.closest('[role="menu"]').remove();
+          const undo = document.createElement("button");
+          undo.textContent = "Undo";
+          scope.replaceChildren(undo);
+          undo.onclick = () => {
+            window.undoClicks.push(key);
+            window.feedback = window.feedback.filter((id) => id !== key);
+            scope.replaceChildren(post);
+          };
+        },
+        true,
+      );
+    });
+    await page.keyboard.press("n");
+    await expect
+      .poll(() => page.evaluate(() => window.feedback))
+      .toEqual(["101"]);
+    await page.evaluate(() => {
+      const recycled = document.querySelector('[data-testid="cellInnerDiv"]');
+      const nextPost = document
+        .querySelector('a[href="/jordan/status/102"]')
+        .closest("article");
+      recycled.replaceChildren(nextPost);
+    });
+    if (source === "wheel") await page.keyboard.press("n");
+    else {
+      await page
+        .locator("article")
+        .filter({ has: page.locator('a[href="/jordan/status/102"]') })
+        .getByRole("button", { name: "More", exact: true })
+        .click();
+      await page
+        .getByRole("menuitem", {
+          name: "Not interested in this post",
+          exact: true,
+        })
+        .click();
+    }
+    await expect
+      .poll(() => page.evaluate(() => window.feedback))
+      .toEqual(["101", "102"]);
+    if (source === "native") await page.keyboard.press("k");
+    await page.keyboard.press("j");
+    if (source === "wheel") {
+      await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+        "href",
+        "/jordan/status/102",
+      );
+      expect(await page.evaluate(() => window.undoClicks)).toEqual(["102"]);
+    } else {
+      await page.keyboard.press("u");
+      expect(await page.evaluate(() => window.feedback)).toEqual([
+        "101",
+        "102",
+      ]);
+      expect(await page.evaluate(() => window.undoClicks)).toEqual([]);
+      await expect(
+        page.getByRole("button", { name: "Undo", exact: true }),
+      ).toHaveCount(1);
+    }
+  });
+}
+
+test("repeated backward navigation waits for native remount without another Undo", async ({
+  page,
+}) => {
+  await nativeUndoInPlace({ page, delay: 300 });
+  await page.keyboard.press("n");
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["101"]);
+  await page.keyboard.press("j");
+  await page.keyboard.press("j");
+  await page.keyboard.press("j");
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/alex/status/101",
+  );
+  expect(await page.evaluate(() => window.undoClicks)).toEqual(["101"]);
+});
+
+test("forward navigation cancels alignment while native Undo remounts", async ({
+  page,
+}) => {
+  await nativeUndoInPlace({ page, delay: 300 });
+  await page.keyboard.press("n");
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["101"]);
+  await page.keyboard.press("j");
+  await page.keyboard.press("k");
+  await page.waitForTimeout(450);
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/jordan/status/102",
+  );
+  expect(await page.evaluate(() => window.undoClicks)).toEqual(["101"]);
+});
+
+test("backward navigation initializes from the visible feed after selection clears", async ({
+  page,
+}) => {
+  await nativeUndoInPlace({ page });
+  await page.keyboard.press("n");
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["101"]);
+  await page.getByRole("tab", { name: "Following", exact: true }).click();
+  await expect(page.locator(".wheel-selected")).toHaveCount(0);
+  await page.getByRole("tab", { name: "For you", exact: true }).click();
+  await page.keyboard.press("j");
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/jordan/status/102",
+  );
+  expect(await page.evaluate(() => window.feedback)).toEqual(["101"]);
+});
+
+test("backward navigation after manual scrolling does not restore an offscreen predecessor", async ({
+  page,
+}) => {
+  await page.addStyleTag({
+    content: "article{min-height:500px}body{padding-bottom:1800px}",
+  });
+  await nativeUndoInPlace({ page });
+  await page.keyboard.press("n");
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["101"]);
+  await page.mouse.wheel(0, 600);
+  await expect
+    .poll(() =>
+      page
+        .locator('a[href="/jordan/status/102"]')
+        .evaluate((a) => a.closest("article").getBoundingClientRect().bottom),
+    )
+    .toBeLessThan(100);
+  await page.keyboard.press("j");
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/sam/status/103",
+  );
+  expect(await page.evaluate(() => window.feedback)).toEqual(["101"]);
+});
+
+test("repeated backward navigation cannot extend the native restoration deadline", async ({
+  page,
+}) => {
+  await page.addStyleTag({
+    content: "article{min-height:500px}body{padding-bottom:1800px}",
+  });
+  await nativeUndoInPlace({ page, delay: 1900 });
+  await page.keyboard.press("n");
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["101"]);
+  await page.keyboard.press("j");
+  const before = await page.evaluate(() => scrollY);
+  await page.waitForTimeout(850);
+  await page.keyboard.press("j");
+  await page.waitForTimeout(1200);
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/alex/status/101",
+  );
+  expect(await page.evaluate(() => scrollY)).toBe(before);
+  await expect(page.locator("html")).not.toHaveClass(/wheel-aligning/);
+  expect(await page.evaluate(() => window.undoClicks)).toEqual(["101"]);
+});
+
+test("backward navigation restores a dismissed reply in a shared conversation cell", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    const posts = [...document.querySelectorAll("article")];
+    const cell = document.createElement("div");
+    cell.dataset.testid = "cellInnerDiv";
+    posts[0].before(cell);
+    cell.append(posts[0], posts[1]);
+  });
+  await nativeUndoInPlace({ page });
+  await page.keyboard.press("n");
+  await expect
+    .poll(() => page.evaluate(() => window.feedback))
+    .toEqual(["102"]);
+  await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
+    "href",
+    "/sam/status/103",
+  );
+  await page.keyboard.press("j");
+  await expect(page.locator("article.wheel-selected")).toHaveCount(2);
+  await expect(page.locator(".wheel-thread-end a:has(time)")).toHaveAttribute(
+    "href",
+    "/jordan/status/102",
+  );
+  expect(await page.evaluate(() => window.undoClicks)).toEqual(["102"]);
+});
+
+for (const obstruction of ["missing", "ambiguous", "recycled"]) {
+  test(`backward navigation refuses ${obstruction} native Undo`, async ({
+    page,
+  }) => {
+    await nativeUndoInPlace({ page });
+    await page.keyboard.press("n");
+    await expect
+      .poll(() => page.evaluate(() => window.feedback))
+      .toEqual(["101"]);
+    await page.evaluate((obstruction) => {
+      const undo = document.querySelector(".undo");
+      if (obstruction === "missing") undo.remove();
+      if (obstruction === "ambiguous") undo.after(undo.cloneNode(true));
+      if (obstruction === "recycled") {
+        const post = undo.closest("article");
+        const replacement = window.addPost({ id: "999" });
+        replacement.append(undo);
+        post.replaceWith(replacement);
+      }
+    }, obstruction);
+    await page.keyboard.press("j");
+    expect(await page.evaluate(() => window.feedback)).toEqual(["101"]);
+    expect(await page.evaluate(() => window.undoClicks)).toEqual([]);
+    if (obstruction !== "recycled")
+      await expect(page.locator(".wheel-notice")).toHaveText(
+        "Undo unavailable.",
+      );
+  });
+}
+
 test("regression: Undo restores keyboard access to the same article", async ({
   page,
 }) => {

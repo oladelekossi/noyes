@@ -6,7 +6,7 @@
   const wheel = (globalThis.__wheel ??= {});
   if (wheel.feedback) return;
 
-  const SKIP_NOTICE = "Skipped — feedback unavailable.";
+  const SKIP_NOTICE = "Skipped — feedback unavailable; nothing sent.";
   const UNDO_NOTICE = "Undo unavailable.";
   const LIKE_MISSING_NOTICE = "Like control not found.";
   const LIKE_COOLDOWN = 1500;
@@ -20,7 +20,10 @@
   const pendingLikes = new Set();
   // The one dismissal operation, or null. See `step` for its states.
   let operation = null;
+  const dismissals = new Map();
   let lastDismissal = null;
+  let restoring = null;
+  let lastOutcome = null;
   let likeMissingNoticed = false;
 
   const now = () => performance.now();
@@ -89,6 +92,7 @@
   }
 
   function finish(op) {
+    lastOutcome = op.outcome || "cancelled";
     if (op.outcome !== "sent") wheel.feed.release({ post: op.post });
     if (operation === op) operation = null;
     op.state = "idle";
@@ -127,8 +131,15 @@
         feed.suppress({ post: op.post, key: op.key });
         // Capture the native result's container before X can replace the post.
         const scope = x.cell({ post: op.post }) || op.post;
+        pruneDismissals();
+        // One native scope may be recycled for another post. Do not leave
+        // an older identity able to claim the replacement's ownerless Undo.
+        for (const record of dismissals.values())
+          if (record.scope === scope && record.key !== op.key)
+            dismissals.delete(record.key);
         op.item.click();
         lastDismissal = { key: op.key, post: op.post, scope };
+        dismissals.set(op.key, lastDismissal);
         op.outcome = "sent";
         return finish(op);
       }
@@ -166,6 +177,7 @@
     if (!key) return undefined;
     const caret = x.caret({ post });
     if (!caret) {
+      lastOutcome = "unavailable";
       ui.notify({ message: SKIP_NOTICE });
       return "unavailable";
     }
@@ -183,6 +195,7 @@
       state: "idle",
     };
     operation = op;
+    lastOutcome = null;
     enter({ op, state: "opening" });
     caret.click();
     while (op.state !== "idle")
@@ -221,6 +234,7 @@
   // The single cancellation entry point. `event` is the input that caused it,
   // when there is one, so input inside a native menu can hand that menu over.
   function interrupt({ source, event }) {
+    restoring = null;
     const op = operation;
     if (!op) return;
     if (event && wheel.x.menuAt({ element: event.target })) {
@@ -234,30 +248,121 @@
     wheel.x.closeMenu({ menu: op.menu });
   }
 
-  function undo() {
+  const anchor = (record) =>
+    record.post.isConnected
+      ? record.post
+      : record.scope?.isConnected
+        ? record.scope
+        : null;
+
+  function pruneDismissals() {
+    for (const record of dismissals.values()) {
+      const identity = record.post.isConnected
+        ? wheel.x.postId({ post: record.post })
+        : null;
+      const replaced =
+        !record.post.isConnected &&
+        record.scope?.isConnected &&
+        wheel.x
+          .posts({ root: record.scope })
+          .some((post) => wheel.x.postId({ post }));
+      if (!anchor(record) || replaced || (identity && identity !== record.key))
+        dismissals.delete(record.key);
+    }
+  }
+
+  function restore(record) {
     const { x, ui, feed, selection } = wheel;
-    const candidates = lastDismissal ? x.undoControls(lastDismissal) : [];
+    const candidates = record ? x.undoControls(record) : [];
     if (candidates.length !== 1) {
       ui.notify({ message: UNDO_NOTICE });
-      return;
+      return false;
     }
-    const { key, post } = lastDismissal;
+    const { key, post } = record;
+    dismissals.delete(key);
+    if (lastDismissal === record) lastDismissal = null;
+    restoring = { key, until: now() + x.timing.restoreTimeout };
     candidates[0].click();
     ui.clearNotice();
-    lastDismissal = null;
     feed.release({ post });
-    selection.select({ key });
+    selection.select({ key, until: restoring.until });
+    return true;
+  }
+
+  function undo() {
+    restoring = null;
+    pruneDismissals();
+    restore(
+      lastDismissal && dismissals.get(lastDismissal.key) === lastDismissal
+        ? lastDismissal
+        : null,
+    );
+  }
+
+  // A strictly earlier node in the same document, excluding containment.
+  const before = ({ first, second }) => {
+    const position = first.compareDocumentPosition(second);
+    return (
+      !(position & Node.DOCUMENT_POSITION_DISCONNECTED) &&
+      !(position & Node.DOCUMENT_POSITION_CONTAINED_BY) &&
+      !!(position & Node.DOCUMENT_POSITION_FOLLOWING)
+    );
+  };
+
+  function restorePrevious({ items }) {
+    const { x, feed, selection } = wheel;
+    if (operation || !x.onForYou()) return false;
+    if (restoring) {
+      const waiting =
+        selection.get() === restoring.key &&
+        !items.some(byKey(restoring.key)) &&
+        now() < restoring.until;
+      if (waiting) {
+        // The earlier keydown listener ended alignment. Resume the same
+        // identity without extending the original restoration deadline.
+        selection.select({ key: restoring.key, until: restoring.until });
+        return true;
+      }
+      restoring = null;
+    }
+    const current = items.find(byKey(selection.get()));
+    if (!current || !feed.inViewport({ item: current })) return false;
+    const previous = items[items.indexOf(current) - 1];
+    let nearest = null;
+    pruneDismissals();
+    for (const record of dismissals.values()) {
+      if (items.some(byKey(record.key))) {
+        // A native Undo performed by the user already restored this post.
+        dismissals.delete(record.key);
+        continue;
+      }
+      const node = anchor(record);
+      if (
+        !before({ first: node, second: current.head }) ||
+        (previous && !before({ first: previous.target, second: node }))
+      )
+        continue;
+      if (!nearest || before({ first: anchor(nearest), second: node }))
+        nearest = record;
+    }
+    return nearest ? restore(nearest) : false;
   }
 
   const pending = () => !!operation;
-  const state = () => operation?.state ?? "idle";
+  const state = () =>
+    operation?.state ??
+    (restoring && now() < restoring.until ? "restoring" : "idle");
+  const outcome = () => lastOutcome;
 
   wheel.feedback = Object.freeze({
     like,
     dismiss,
     undo,
+    restorePrevious,
     interrupt,
     pending,
     state,
+    outcome,
+    reconcile: pruneDismissals,
   });
 })();

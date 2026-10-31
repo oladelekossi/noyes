@@ -1,4 +1,4 @@
-# Plan: a layered wheel that survives X changes
+# Plan: a layered noyes that survives X changes
 
 Status: **done** (2026-10-31), except the owner's first live probe run (Phase 6). Built as described below, with the differences listed in "As built". Sections below keep their original `planned` wording as the design record; for current behavior read [architecture.md](architecture.md).
 
@@ -6,6 +6,8 @@ Status: **done** (2026-10-31), except the owner's first live probe run (Phase 6)
 
 Where this plan and the code differ, the code and its tests are right:
 
+- **Backward native restoration added (0.2.2).** `j` can restore the nearest dismissed predecessor while its native Undo remains identifiable. Feedback owns retained identity/scope records; `u` keeps its latest-only contract. This replaces the original no-history navigation limit without copying post content. Menu diagnostics now record only counts/booleans and explicit no-send outcomes.
+- **Ad tracking scope corrected (0.2.1).** Live DOM diagnostics showed ordinary video posts also contain `placementTracking`. Only an ancestor wrapper or the article's own promoted indicator is ad evidence; child media trackers and indicators in nested quoted articles are excluded. Synthetic regression tests cover navigation and feedback advancement.
 - **Generic DOM predicates live in `x.js`.** `feed.js` needs `visible()`, so `x.visible` is part of the adapter rather than a separate utility file. `x.js` also gained `timestamp`, `timestamps`, `timestampId` (dismissal reconciliation) and `menuAt` (input inside a native menu), which the §3.3 list did not name.
 - **`selection.interrupt()` takes no source** and returns whether alignment was running; the flush happens on every interrupt, as before the split. `selection.navigate()` holds today's `navigate()`; `feed.neighbors` was not needed.
 - **`menuInput` is not a separate source.** `feedback.interrupt({ source, event })` detects input inside a visible native menu from `event`, for any source.
@@ -17,18 +19,18 @@ Where this plan and the code differ, the code and its tests are right:
 - **Live probe:** rows 11–14 are `not probed` (each needs a click); row 14 cannot be read without a dismissal. Rows 6 and 8 report `not observed` when no ad or adjacent-cell conversation is on screen. Row 16 compares the bottom of the For You tab's sticky header with `x.layout.headerHeight` (±8 px). `--fixture` runs the probe against the synthetic feed to check the probe itself.
 - **README** gained one Limits sentence for the drift notice, and CI runs `npm run test:unit`.
 
-Read this for why wheel is layered the way it is, the inventory of X assumptions (§2.1), and what fails closed when one breaks (§3.4). For how to fix drift, read [architecture.md](architecture.md#when-x-changes); for required checks, [AGENTS.md](../AGENTS.md).
+Read this for why noyes is layered the way it is, the inventory of X assumptions (§2.1), and what fails closed when one breaks (§3.4). For how to fix drift, read [architecture.md](architecture.md#when-x-changes); for required checks, [AGENTS.md](../AGENTS.md).
 
 ## 1. Outcome and constraints
 
-Outcome: when X changes markup, wording, or layout, wheel (a) fails closed — never acts on the wrong post or control, and tells the user which feature stopped working — and (b) is fixed by a data edit in one file, verified by one command, without touching navigation, feedback, or undo logic.
+Outcome: when X changes markup, wording, or layout, noyes (a) fails closed — never acts on the wrong post or control, and tells the user which feature stopped working — and (b) is fixed by a data edit in one file, verified by one command, without touching navigation, feedback, or undo logic.
 
 Fixed constraints. A phase that violates one is wrong, however elegant.
 
 - **No build step.** `extension/` is loaded unpacked as-is. No bundler, transpiler, TypeScript, or framework. Reason: README promises it, and the extension-loading smoke test depends on it.
 - **No runtime dependencies, storage, analytics, or network.** README "Privacy" is a user promise.
-- **Only native X controls are clicked**, matched by exact `data-testid` or exact normalized label. Never the first menu item, never a guess from an icon or position. When a lookup fails, wheel does nothing and says so.
-- **User-visible behavior is unchanged** — the five shortcuts and every sentence of README. The one addition is a notice when wheel detects it cannot read the page (§3.5). A phase that changes anything else is a bug in the phase.
+- **Only native X controls are clicked**, matched by exact `data-testid` or exact normalized label. Never the first menu item, never a guess from an icon or position. When a lookup fails, noyes does nothing and says so.
+- **User-visible behavior is unchanged** — the five shortcuts and every sentence of README. The one addition is a notice when noyes detects it cannot read the page (§3.5). A phase that changes anything else is a bug in the phase.
 - **vet rules stay**: one parameter per function (named options objects), Prettier, pinned Actions.
 
 `not planned`: other locales, Following tab, mobile, settings, automatic feedback retry. The adapter in §3.3 makes a locale a data change; adding one is a separate decision.
@@ -43,7 +45,7 @@ Fixed constraints. A phase that violates one is wrong, however elegant.
 
 ### 2.1 Inventory of X assumptions in `content.js`
 
-Every row is a place X can break wheel. Today they are spread across the file; the plan moves all of them into `extension/x.js`.
+Every row is a place X can break noyes. Today they are spread across the file; the plan moves all of them into `extension/x.js`.
 
 | #   | Assumption                                                                                                                                                                                                      | Form today                                                            | Used by                            |
 | --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------- |
@@ -52,7 +54,7 @@ Every row is a place X can break wheel. Today they are spread across the file; t
 | 3   | The main column is `[data-testid="primaryColumn"]`                                                                                                                                                              | `primaryColumn()`                                                     | feed scan, For You check           |
 | 4   | For You = `location.pathname` is `/home` and a visible `[role="tab"][aria-selected="true"]` in the column has text `for you`                                                                                    | `onForYou()`                                                          | shortcut gate, cancellation        |
 | 5   | A post's ID is `(\d+)` after `/status/` in the `href` of the anchor around the post's own `time`                                                                                                                | `hrefId`, `postKey`                                                   | identity everywhere                |
-| 6   | Ads: post inside or containing `[data-testid="placementTracking"]`, or containing `[data-testid="promotedIndicator"]`                                                                                           | `isAd()`                                                              | feed scan                          |
+| 6   | Ads: article inside a `[data-testid="placementTracking"]` wrapper, or its own `[data-testid="promotedIndicator"]` (not quoted/media tracking)                                                                                           | `isAd()`                                                              | feed scan                          |
 | 7   | Avatar is `[data-testid="Tweet-User-Avatar"]`                                                                                                                                                                   | `continuesConversation()`                                             | grouping                           |
 | 8   | Conversation connector: an empty `div` 1–3 px wide, >8 px tall, centered on the avatar within 4 px, bottom within 4 px of the post, painted background, not `opacity: 0`; adjacent cells within 4 px vertically | `isAvatarRail()`, `continuesConversation()`                           | grouping                           |
 | 9   | Like control is `[data-testid="like"]`; already liked shows `unlike`                                                                                                                                            | `likePost()`                                                          | `l`                                |
@@ -171,10 +173,8 @@ const contract = Object.freeze({
   column: { candidates: ['[data-testid="primaryColumn"]'] },
   statusHref: { pattern: /\/status\/(\d+)/ },
   ad: {
-    candidates: [
-      '[data-testid="placementTracking"]',
-      '[data-testid="promotedIndicator"]',
-    ],
+    wrapper: ['[data-testid="placementTracking"]'],
+    candidates: ['[data-testid="promotedIndicator"]'],
   },
   avatar: { candidates: ['[data-testid="Tweet-User-Avatar"]'] },
   like: {
@@ -280,7 +280,7 @@ Interrupt sources — this table is the whole of today's `allowLate` logic, whic
 
 | `source`                                         | `ownsLateMenu` after                 | Why                                             |
 | ------------------------------------------------ | ------------------------------------ | ----------------------------------------------- |
-| `shortcut` (j/k/u consumed by wheel)             | unchanged (true)                     | consumed keys cannot open a user menu           |
+| `shortcut` (j/k/u consumed by noyes)             | unchanged (true)                     | consumed keys cannot open a user menu           |
 | `escape` (unmodified Escape)                     | unchanged                            | Escape closes, never opens                      |
 | `key` (any other key)                            | false                                | could open a user menu                          |
 | `wheel`                                          | unchanged                            | scrolling opens nothing                         |
@@ -299,7 +299,7 @@ Owns: `handledKeys`. Provides `install()` which registers today's capture-phase 
 - `interrupt({ source })` on both `selection` and `feedback`, with `source` from the table above;
 - commands: `navigate({ direction })`, `like()`, `dismiss()`, `undo()` — the body of `handleShortcut()` today.
 
-The gating order in `handleShortcut()` (shortcut key → unmodified → not composing → not typing → on For You → overlay rule → preventDefault → repeat check) is preserved verbatim. The non-passive wheel listener's first-delta scroll stays here; it calls `selection.interrupt({ source: "wheel" })` and the flush happens inside selection.
+The gating order in `handleShortcut()` (shortcut key → unmodified → not composing → not typing → on For You → overlay rule → preventDefault → repeat check) is preserved verbatim. The non-passive noyes listener's first-delta scroll stays here; it calls `selection.interrupt({ source: "wheel" })` and the flush happens inside selection.
 
 Must not: contain a selector or label (uses `x.typingContext`, `x.onForYou`, `x.overlayOpen`).
 
@@ -309,12 +309,12 @@ Owns: `scheduled`. Provides nothing. Does: load guard; `ui.setLayoutVars`; `inpu
 
 ### 3.4 Degradation matrix
 
-What still works when one row of the inventory breaks. "Closed" means wheel does nothing and shows a notice; it never acts on a different element.
+What still works when one row of the inventory breaks. "Closed" means noyes does nothing and shows a notice; it never acts on a different element.
 
 | Broken row       | Navigation `j`/`k`                                                                  | `l`                                                                     | `n`                  | `u`    | User sees                                                                                                                         |
 | ---------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | -------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------- |
 | 1 post selector  | off                                                                                 | off                                                                     | off                  | off    | drift notice (§3.5)                                                                                                               |
-| 3 column / 4 tab | off (gate fails)                                                                    | off                                                                     | off                  | off    | nothing (as today: wheel believes it is not on For You). Probe catches it.                                                        |
+| 3 column / 4 tab | off (gate fails)                                                                    | off                                                                     | off                  | off    | nothing (as today: noyes believes it is not on For You). Probe catches it.                                                        |
 | 5 ID             | off (no items)                                                                      | off                                                                     | off                  | off    | drift notice                                                                                                                      |
 | 6 ads            | works; ads become navigable and `n` offers whatever menu they have — **not closed** |                                                                         |                      |        | nothing. Mitigation: row 12 exact labels exclude `not interested in this ad`; probe asserts an ad is excluded when one is visible |
 | 8 rail           | works; conversations split into separate items                                      | works                                                                   | works                | works  | nothing visible; probe reports rail failures                                                                                      |
@@ -372,7 +372,7 @@ Command: `node --test tests/unit/` from the repository root (`npm run test:unit`
 
 ### 4.2 Browser tests (`built`, reorganized in Phase 5)
 
-Keep Playwright for alignment, snap, wheel release, mutation batching, and the end-to-end flows on the synthetic feed. Changes:
+Keep Playwright for alignment, snap, noyes release, mutation batching, and the end-to-end flows on the synthetic feed. Changes:
 
 - `tests/helpers.mjs` exports `inject({ page })`: reads `extension/manifest.json`, `addStyleTag` for each CSS, `addScriptTag` for each JS in order. All three spec files use it; no spec names `content.js`.
 - Split `wheel.spec.mjs` into `feedback.spec.mjs`, `undo.spec.mjs`, `selection.spec.mjs`, `grouping.spec.mjs`, `input.spec.mjs`, keeping test names unchanged so history is searchable. `navigation.spec.mjs` and `extension.spec.mjs` stay.
@@ -396,7 +396,7 @@ Purpose: detect X drift before a user does. It is the only check that touches re
 Run from the repository root with a logged-in Chrome profile copy or a dedicated profile directory:
 
 ```
-WHEEL_PROFILE_DIR=~/wheel-probe-profile node scripts/probe-live.mjs
+WHEEL_PROFILE_DIR=~/noyes-probe-profile node scripts/probe-live.mjs
 ```
 
 Behavior:

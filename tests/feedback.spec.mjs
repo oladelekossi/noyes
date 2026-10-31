@@ -198,7 +198,7 @@ test("unavailable feedback at the end never jumps backward", async ({
   await page.keyboard.press("k");
   await page.keyboard.press("n");
   await expect(page.getByRole("status")).toHaveText(
-    "Skipped — feedback unavailable.",
+    "Skipped — feedback unavailable; nothing sent.",
   );
   await expect(page.locator(".wheel-selected a:has(time)")).toHaveAttribute(
     "href",
@@ -428,7 +428,7 @@ test("drift: unrecognizable posts show one layout notice", async ({ page }) => {
   );
   const notice = page.locator(".wheel-notice");
   await expect(notice).toHaveText(
-    "wheel can't read this feed layout — shortcuts are off until wheel is updated.",
+    "noyes can't read this feed layout — shortcuts are off until noyes is updated.",
     { timeout: 5000 },
   );
   await page.keyboard.press("k");

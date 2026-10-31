@@ -1,6 +1,6 @@
 {
-  "name": "wheel",
-  "version": "0.2.0",
+  "name": "noyes",
+  "version": "0.2.2",
   "private": true,
   "description": "Fine-tune your X feed, one keystroke at a time.",
   "scripts": {
@@ -12,7 +12,8 @@
     "vet:all": "node scripts/vet.mjs --json",
     "format": "prettier --write \"extension/*.{js,css,json}\" \"scripts/*.mjs\" \"tests/*.{js,mjs}\" \"tests/unit/*.mjs\" playwright.config.mjs",
     "test:vet": "node --test scripts/vet.test.mjs scripts/layers.test.mjs scripts/probe-live.test.mjs",
-    "probe:live": "node scripts/probe-live.mjs"
+    "probe:live": "node scripts/probe-live.mjs",
+    "debug:build": "node scripts/build-debug.mjs"
   },
   "engines": {
     "node": ">=20"

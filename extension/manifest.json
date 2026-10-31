@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "wheel",
-  "version": "0.2.0",
+  "name": "noyes",
+  "version": "0.2.2",
   "description": "Tune your X feed with j/k navigation, l to like, and n for Not interested, and u to undo feedback.",
   "content_scripts": [
     {
